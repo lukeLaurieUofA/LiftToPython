@@ -16,6 +16,7 @@ public class Parser {
     private static final Pattern end_scope = Pattern.compile("^rightWeightClip$");
     private static final Pattern int_expr = Pattern.compile("^(.+) creatine (.+)$|^(.+) restDay (.+)$|^(.+) steroids (.+)$|^(.+) vegan (.+)$|^(.+) muscleMass (.+)$");
     private static final Pattern bool_expr = Pattern.compile("^(.+) crushed (.+)$|^(.+) spotter (.+)$|^(.+) settle (.+)$");
+    private static final Pattern increment = Pattern.compile("^(.+) superset$");
 
     public static void main(String[] args) {
         Scanner in = new Scanner(System.in);
@@ -147,6 +148,8 @@ public class Parser {
             match = true;
         } else if(boolExpr(cmd)) {
             match = true;
+        } else if(incrementExpr(cmd)) {
+            match = true;
         }
         printMsg(match, "<val>", cmd, "value");
         return match;
@@ -229,6 +232,18 @@ public class Parser {
             match = ((match && intVal(m.group(offset + 1)) || match && intExpr(m.group(offset + 1))));
         }
         printMsg(match, "<int_expr>", cmd, "integer expression");
+        return match;
+    }
+
+    public static boolean incrementExpr(String cmd)
+    {
+        boolean match = false;
+        Matcher m = increment.matcher(cmd);
+        if (m.find()) {
+            //can either match integer values or more integer expressions
+            match = intExpr(m.group(1)) || intVal(m.group(1)) || var(m.group(1));
+        }
+        printMsg(match, "<increment_expr>", cmd, "integer increment expression");
         return match;
     }
 }
