@@ -11,8 +11,10 @@ public class ConnorKippes {
     private static final Pattern intVal = Pattern.compile("^\\d+$|^-\\d+$");
     private static final Pattern bool = Pattern.compile("^t$|^f$");
     
-    //new stuff
     private static final Pattern int_expr = Pattern.compile("^(.+) creatine (.+)|(.+) restDay (.+)|(.+) steroids (.+)|(.+) vegan (.+)|(.+) muscleMass (.+)$");
+    
+    //new stuff
+    private static final Pattern bool_expr = Pattern.compile("^(.+) crushed (.+)|(.+) spotter (.+)|(.+) settle (.+)$");
     //to here
     
     public static void main(String[] args) {
@@ -118,7 +120,6 @@ public class ConnorKippes {
             System.out.println("Failed to parse: {" + cmd + "} is not a valid " + item + ".");
     }
     
-  //added this
     private static boolean intVal(String cmd) {
         Matcher m = intVal.matcher(cmd);
         boolean match = m.find();
@@ -127,15 +128,36 @@ public class ConnorKippes {
         printMsg(match, "<val>", cmd, "value");
         return match;
     }
-    
-    private static boolean intExpression(String cmd) {
+    //changed this name also
+    private static boolean intExpr(String cmd) {
     	boolean match = false;
         Matcher m = int_expr.matcher(cmd);
         if (m.find()) {
             match = true;
             //can either match integer values or more integer expressions
-            match = (match && intVal(m.group(1))) || (match && intVal(m.group(1)));
-            match = (match && intVal(m.group(2))) || (match && intVal(m.group(2)));
+            match = (match && intExpr(m.group(1))) || (match && intVal(m.group(1)));
+            match = (match && intExpr(m.group(2))) || (match && intVal(m.group(2)));
+        }
+        printMsg(match, "<int_expr>", cmd, "integer expression");
+        return match;
+    }
+    //added this
+    private static boolean boolVal(String cmd) {
+        Matcher m = bool.matcher(cmd);
+        boolean match = m.find();
+        if (match)
+            printMsg(match, "<bool>", cmd, "boolean");
+        return match;
+    }
+    
+    private static boolean boolExpr(String cmd) {
+    	boolean match = false;
+        Matcher m = bool_expr.matcher(cmd);
+        if (m.find()) {
+            match = true;
+            //can either match integer values or more integer expressions
+            match = (match && boolExpr(m.group(1))) || (match && boolVal(m.group(1)));
+            match = (match && boolExpr(m.group(2))) || (match && boolVal(m.group(2)));
         }
         printMsg(match, "<int_expr>", cmd, "integer expression");
         return match;
