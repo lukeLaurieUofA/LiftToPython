@@ -13,8 +13,10 @@ public class ConnorKippes {
     
     private static final Pattern int_expr = Pattern.compile("^(.+) creatine (.+)|(.+) restDay (.+)|(.+) steroids (.+)|(.+) vegan (.+)|(.+) muscleMass (.+)$");
     
-    //new stuff
     private static final Pattern bool_expr = Pattern.compile("^(.+) crushed (.+)|(.+) spotter (.+)|(.+) settle (.+)$");
+    
+    //new stuff
+    private static final Pattern increment = Pattern.compile("^(.+) superset$");
     //to here
     
     public static void main(String[] args) {
@@ -141,7 +143,6 @@ public class ConnorKippes {
         printMsg(match, "<int_expr>", cmd, "integer expression");
         return match;
     }
-    //added this
     private static boolean boolVal(String cmd) {
         Matcher m = bool.matcher(cmd);
         boolean match = m.find();
@@ -160,6 +161,20 @@ public class ConnorKippes {
             match = (match && boolExpr(m.group(2))) || (match && boolVal(m.group(2)));
         }
         printMsg(match, "<int_expr>", cmd, "integer expression");
+        return match;
+    }
+    
+    //added this
+    public static boolean incrementExpr(String cmd)
+    {
+    	boolean match = false;
+        Matcher m = increment.matcher(cmd);
+        if (m.find()) {
+            match = true;
+            //can either match integer values or more integer expressions
+            match = (match && intExpr(m.group(1)));
+        }
+        printMsg(match, "<increment_expr>", cmd, "integer increment expression");
         return match;
     }
     //to heree
