@@ -14,7 +14,8 @@ public class Parser {
     private static final Pattern strVal = Pattern.compile("^\"(.*)\"$");
     private static final Pattern bool = Pattern.compile("^gotItUp$|^failed$");
     private static final Pattern end_scope = Pattern.compile("^rightWeightClip$");
-    private static final Pattern int_expr = Pattern.compile("^(.+) creatine (.+)|(.+) restDay (.+)|(.+) steroids (.+)|(.+) vegan (.+)|(.+) muscleMass (.+)$");
+    private static final Pattern int_expr = Pattern.compile("^(.+) creatine (.+)$|^(.+) restDay (.+)$|^(.+) steroids (.+)$|^(.+) vegan (.+)$|^(.+) muscleMass (.+)$");
+    private static final Pattern bool_expr = Pattern.compile("^(.+) crushed (.+)$|^(.+) spotter (.+)$|^(.+) settle (.+)$");
 
     public static void main(String[] args) {
         Scanner in = new Scanner(System.in);
@@ -136,13 +137,15 @@ public class Parser {
         boolean match = false;
         if (intVal(cmd)) {
             match = true;
-        } else if (bool_val(cmd)) {
+        } else if (boolVal(cmd)) {
             match = true;
         } else if(var(cmd)) {
             match = true;
         } else if(str_val(cmd)) {
             match = true;
-        } else if(intExpression(cmd)) {
+        } else if(intExpr(cmd)) {
+            match = true;
+        } else if(boolExpr(cmd)) {
             match = true;
         }
         printMsg(match, "<val>", cmd, "value");
@@ -163,14 +166,30 @@ public class Parser {
         return match;
     }
 
-    private static boolean bool_val(String cmd) {
+    private static boolean boolVal(String cmd) {
         Matcher m = bool.matcher(cmd);
-        boolean match = false;
-        if(m.find()) {
-            match = true;
+        boolean match = m.find();
+        if (match) {
             printMsg(true, "<bool>", cmd, "boolean");
         }
-        printMsg(match, "<val>", cmd, "value");
+        return match;
+    }
+
+    private static boolean boolExpr(String cmd) {
+        boolean match = false;
+        Matcher m = bool_expr.matcher(cmd);
+        if (m.find()) {
+            //can either match integer values or more integer expressions
+            int offset = 1;
+            if(cmd.contains("spotter")) {
+                offset = 3;
+            } else if(cmd.contains("settle")) {
+                offset = 5;
+            }
+            match = boolExpr(m.group(offset)) || boolVal(m.group(offset));
+            match = (match && boolExpr(m.group(offset + 1))) || (match && boolVal(m.group(offset + 1)));
+        }
+        printMsg(match, "<int_expr>", cmd, "integer expression");
         return match;
     }
 
@@ -191,13 +210,23 @@ public class Parser {
         return match;
     }
 
-    private static boolean intExpression(String cmd) {
+    private static boolean intExpr(String cmd) {
         boolean match = false;
         Matcher m = int_expr.matcher(cmd);
         if (m.find()) {
             //can either match integer values or more integer expressions
-            match = intVal(m.group(1)) || intVal(m.group(1));
-            match = (match && intVal(m.group(2))) || (match && intVal(m.group(2)));
+            int offset = 1;
+            if(cmd.contains("restDay")) {
+                offset = 3;
+            } else if(cmd.contains("steroids")) {
+                offset = 5;
+            } else if(cmd.contains("vegan")) {
+                offset = 7;
+            } else if(cmd.contains("muscleMass")) {
+                offset = 9;
+            }
+            match = intVal(m.group(offset)) || intExpr(m.group(offset));
+            match = ((match && intVal(m.group(offset + 1)) || match && intExpr(m.group(offset + 1))));
         }
         printMsg(match, "<int_expr>", cmd, "integer expression");
         return match;
