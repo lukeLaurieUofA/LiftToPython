@@ -260,8 +260,8 @@ public class Parser {
         boolean match = false;
         Matcher m = less_than.matcher(cmd);
         if (m.find()) {
-            match = boolExpr(m.group(1)) || val(m.group(1)) || intExpr(m.group(1));
-            match = match && (boolExpr(m.group(2)) || val(m.group(2))) || intExpr(m.group(1));
+            match = intVal(m.group(1)) || intExpr(m.group(1));
+            match = match && (intVal(m.group(2)) || intExpr(m.group(2)));
         }
         printMsg(match, "<less_expr>", cmd, "less than expression");
         return match;
@@ -271,8 +271,8 @@ public class Parser {
         boolean match = false;
         Matcher m = greater_than.matcher(cmd);
         if (m.find()) {
-            match = boolExpr(m.group(1)) || val(m.group(1)) || intExpr(m.group(1));
-            match = match && (boolExpr(m.group(2)) || val(m.group(2)) || intExpr(m.group(1)));
+            match = intVal(m.group(1)) || intExpr(m.group(1));
+            match = match && (intVal(m.group(1)) || intExpr(m.group(1)));
         }
         printMsg(match, "<greater_expr>", cmd, "greater than expression");
         return match;
