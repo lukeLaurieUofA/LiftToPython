@@ -47,16 +47,12 @@ public class Parser {
     private static void parseCmd(String cmd) {
         if(varAssign(cmd)) {
             System.out.println("<stmt>");
-            return;
         } else if(funcDec(cmd)) {
             System.out.println("<stmt>");
-            return;
         } else if(loopDec(cmd)) {
             System.out.println("<stmt>");
-            return;
         } else if(endScope(cmd)) {
             System.out.println("<stmt>");
-            return;
         } else if(ifExpr(cmd)) {
             System.out.println("<stmt>");
         } else if(elseExpr(cmd)) {
@@ -64,7 +60,6 @@ public class Parser {
         } else if(returnExpr(cmd)) {
             System.out.println("<stmt>");
         }
-        System.out.println("<stmt>");
     }
 
     private static boolean endScope(String cmd) {
@@ -200,11 +195,17 @@ public class Parser {
 
     private static boolean boolExpr(String cmd) {
         boolean match = false;
-        if (addExpr(cmd)) {
+        if (andExpr(cmd)) {
             match = true;
         } else if (orExpr(cmd)) {
             match = true;
         } else if(notExpr(cmd)) {
+            match = true;
+        } else if(equalExpr(cmd)) {
+            match = true;
+        } else if(lessExpr(cmd)) {
+            match = true;
+        } else if(greaterExpr(cmd)) {
             match = true;
         }
         return match;
@@ -215,8 +216,8 @@ public class Parser {
         Matcher m = and_expr.matcher(cmd);
         if (m.find()) {
             //can either match bool values or more and expressions
-            match = andExpr(m.group(1)) || orExpr(m.group(1)) || boolVal(m.group(1));
-            match = match && (andExpr(m.group(2)) || orExpr(m.group(2)) || boolVal(m.group(2)));
+            match = boolExpr(m.group(1)) || val(m.group(1));
+            match = match && (boolExpr(m.group(2)) || val(m.group(2)));
         }
         printMsg(match, "<and_expr>", cmd, "and expression");
         return match;
@@ -227,8 +228,8 @@ public class Parser {
         Matcher m = or_expr.matcher(cmd);
         if (m.find()) {
             //can either match bool values or more and expressions
-            match = orExpr(m.group(1)) || andExpr(m.group(1)) || boolVal(m.group(1));
-            match = match && (orExpr(m.group(2)) || andExpr(m.group(2)) || boolVal(m.group(2)));
+            match = boolExpr(m.group(1)) || val(m.group(1));
+            match = match && (boolExpr(m.group(2)) || val(m.group(2)));
         }
         printMsg(match, "<or_expr>", cmd, "or expression");
         return match;
@@ -238,9 +239,42 @@ public class Parser {
         boolean match = false;
         Matcher m = not_expr.matcher(cmd);
         if (m.find()) {
-            match = notExpr(m.group(1)) || orExpr(m.group(1)) || andExpr(m.group(1)) || boolVal(m.group(1));
+            match = boolExpr(m.group(1)) || val(m.group(1));
         }
         printMsg(match, "<int_expr>", cmd, "integer expression");
+        return match;
+    }
+
+    private static boolean equalExpr(String cmd) {
+        boolean match = false;
+        Matcher m = equal_to.matcher(cmd);
+        if (m.find()) {
+            match = boolExpr(m.group(1)) || val(m.group(1)) || intExpr(m.group(1));
+            match = match && (boolExpr(m.group(2)) || val(m.group(2)) || intExpr(m.group(1)));
+        }
+        printMsg(match, "<equal_expr>", cmd, "equality expression");
+        return match;
+    }
+
+    private static boolean lessExpr(String cmd) {
+        boolean match = false;
+        Matcher m = less_than.matcher(cmd);
+        if (m.find()) {
+            match = boolExpr(m.group(1)) || val(m.group(1)) || intExpr(m.group(1));
+            match = match && (boolExpr(m.group(2)) || val(m.group(2))) || intExpr(m.group(1));
+        }
+        printMsg(match, "<less_expr>", cmd, "less than expression");
+        return match;
+    }
+
+    private static boolean greaterExpr(String cmd) {
+        boolean match = false;
+        Matcher m = greater_than.matcher(cmd);
+        if (m.find()) {
+            match = boolExpr(m.group(1)) || val(m.group(1)) || intExpr(m.group(1));
+            match = match && (boolExpr(m.group(2)) || val(m.group(2)) || intExpr(m.group(1)));
+        }
+        printMsg(match, "<greater_expr>", cmd, "greater than expression");
         return match;
     }
 
@@ -272,6 +306,8 @@ public class Parser {
         } else if (divExpr(cmd)) {
             match = true;
         } else if(modExpr(cmd)) {
+            match = true;
+        } else if(incrementExpr(cmd)) {
             match = true;
         }
         return match;
@@ -361,6 +397,7 @@ public class Parser {
         printMsg(match, "<else_expr>", cmd, "else expression");
         return match;
     }
+
     public static boolean returnExpr(String cmd) {
         boolean match = false;
         Matcher m = return_expr.matcher(cmd);
