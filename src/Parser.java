@@ -11,7 +11,7 @@ public class Parser {
     private static final Pattern var = Pattern.compile("^pecs(\\d)*$|^delts(\\d)*$|^lats(\\d)*$|^biceps(\\d)*$|^triceps(\\d)*$|^abs(\\d)*$|^obliques(\\d)*$|^quads(\\d)*$|^hamstrings(\\d)*$|^" +
             "glutes(\\d)*$|^calves(\\d)*$|^forearms(\\d)*$");
     private static final Pattern intVal = Pattern.compile("^\\d+$|^-\\d+$");
-    private static final Pattern strVal = Pattern.compile("^\"(.*)\"$");
+    private static final Pattern str_val = Pattern.compile("^\"(.*)\"$");
     private static final Pattern bool = Pattern.compile("^gotItUp$|^failed$");
     private static final Pattern end_scope = Pattern.compile("^rightWeightClip$");
     private static final Pattern add_expr = Pattern.compile("^(.+) creatine (.+)$");
@@ -30,6 +30,8 @@ public class Parser {
     private static final Pattern increment = Pattern.compile("^(.+) superset$");
     private static final Pattern if_expr = Pattern.compile("^canYouLift[(](.+)[)] leftWeightClip$");
     private static final Pattern else_expr = Pattern.compile("^rightWeightClip yourAFailureSo leftWeightClip$");
+
+    private static final Pattern return_expr = Pattern.compile("^gains (.+) pump");
 
     public static void main(String[] args) {
         Scanner in = new Scanner(System.in);
@@ -58,6 +60,8 @@ public class Parser {
         } else if(ifExpr(cmd)) {
             System.out.println("<stmt>");
         } else if(elseExpr(cmd)) {
+            System.out.println("<stmt>");
+        } else if(returnExpr(cmd)) {
             System.out.println("<stmt>");
         }
         System.out.println("<stmt>");
@@ -158,7 +162,7 @@ public class Parser {
             match = true;
         } else if(var(cmd)) {
             match = true;
-        } else if(str_val(cmd)) {
+        } else if(strVal(cmd)) {
             match = true;
         } else if(intExpr(cmd)) {
             match = true;
@@ -171,8 +175,8 @@ public class Parser {
         return match;
     }
 
-    private static boolean str_val(String cmd) {
-        Matcher m = strVal.matcher(cmd);
+    private static boolean strVal(String cmd) {
+        Matcher m = str_val.matcher(cmd);
         boolean match = false;
         if(m.find()) {
             match = true;
@@ -212,7 +216,7 @@ public class Parser {
         if (m.find()) {
             //can either match bool values or more and expressions
             match = andExpr(m.group(1)) || orExpr(m.group(1)) || boolVal(m.group(1));
-            match = (match && andExpr(m.group(2))) || (match && orExpr(m.group(2))) || (match && boolVal(m.group(2)));
+            match = match && (andExpr(m.group(2)) || orExpr(m.group(2)) || boolVal(m.group(2)));
         }
         printMsg(match, "<and_expr>", cmd, "and expression");
         return match;
@@ -224,7 +228,7 @@ public class Parser {
         if (m.find()) {
             //can either match bool values or more and expressions
             match = orExpr(m.group(1)) || andExpr(m.group(1)) || boolVal(m.group(1));
-            match = (match && orExpr(m.group(2))) || (match && andExpr(m.group(2))) || (match && boolVal(m.group(2)));
+            match = match && (orExpr(m.group(2)) || andExpr(m.group(2)) || boolVal(m.group(2)));
         }
         printMsg(match, "<or_expr>", cmd, "or expression");
         return match;
@@ -328,8 +332,7 @@ public class Parser {
         return match;
     }
 
-    public static boolean incrementExpr(String cmd)
-    {
+    public static boolean incrementExpr(String cmd) {
         boolean match = false;
         Matcher m = increment.matcher(cmd);
         if (m.find()) {
@@ -356,6 +359,15 @@ public class Parser {
         Matcher m = else_expr.matcher(cmd);
         match = m.find();
         printMsg(match, "<else_expr>", cmd, "else expression");
+        return match;
+    }
+    public static boolean returnExpr(String cmd) {
+        boolean match = false;
+        Matcher m = return_expr.matcher(cmd);
+        if(m.find()) {
+            match = val(m.group(1));
+        }
+        printMsg(match, "<return_expr>", cmd, "return expression");
         return match;
     }
 }
