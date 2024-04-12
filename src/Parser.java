@@ -10,7 +10,7 @@ public class Parser {
     private static final Pattern type = Pattern.compile("^ryanBullard$|^lightWeight$|^weight$|^cables$|^pr$|^samSulek$");
     private static final Pattern var = Pattern.compile("^pecs(\\d)*$|^delts(\\d)*$|^lats(\\d)*$|^biceps(\\d)*$|^triceps(\\d)*$|^abs(\\d)*$|^obliques(\\d)*$|^quads(\\d)*$|^hamstrings(\\d)*$|^" +
             "glutes(\\d)*$|^calves(\\d)*$|^forearms(\\d)*$");
-    private static final Pattern intVal = Pattern.compile("^\\d+$|^-\\d+$");
+    private static final Pattern int_val = Pattern.compile("^\\d+(\\d)$|^-\\d+$|^-\\d+[.]\\d+$|^\\d+[.]\\d+$");
     private static final Pattern str_val = Pattern.compile("^\"(.*)\"$");
     private static final Pattern bool = Pattern.compile("^gotItUp$|^failed$");
     private static final Pattern end_scope = Pattern.compile("^rightWeightClip$");
@@ -286,7 +286,7 @@ public class Parser {
     }
 
     private static boolean intVal(String cmd) {
-        Matcher m = intVal.matcher(cmd);
+        Matcher m = int_val.matcher(cmd);
         boolean match = m.find();
         if (match) {
             printMsg(true, "<int>", cmd, "integer");
