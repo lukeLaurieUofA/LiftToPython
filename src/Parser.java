@@ -10,7 +10,8 @@ public class Parser {
     private static final Pattern type = Pattern.compile("^ryanBullard$|^lightWeight$|^weight$|^cables$|^pr$|^samSulek$");
     private static final Pattern var = Pattern.compile("^pecs(\\d)*$|^delts(\\d)*$|^lats(\\d)*$|^biceps(\\d)*$|^triceps(\\d)*$|^abs(\\d)*$|^obliques(\\d)*$|^quads(\\d)*$|^hamstrings(\\d)*$|^" +
             "glutes(\\d)*$|^calves(\\d)*$|^forearms(\\d)*$");
-    private static final Pattern int_val = Pattern.compile("^\\d+(\\d)$|^-\\d+$|^-\\d+[.]\\d+$|^\\d+[.]\\d+$");
+    private static final Pattern int_val = Pattern.compile("^\\d+$|^-\\d+$|^-\\d+[.]\\d+$|^\\d+[.]\\d+$");
+    
     private static final Pattern str_val = Pattern.compile("^\"(.*)\"$");
     private static final Pattern bool = Pattern.compile("^gotItUp$|^failed$");
     private static final Pattern end_scope = Pattern.compile("^rightWeightClip$");
@@ -317,8 +318,8 @@ public class Parser {
         boolean match = false;
         Matcher m = add_expr.matcher(cmd);
         if (m.find()) {
-            match = intVal(m.group(1)) || intExpr(m.group(1));
-            match = ((match && intVal(m.group(2)) || match && intExpr(m.group(2))));
+        	match = intVal(m.group(1)) || var(m.group(1)) || intExpr(m.group(1));
+            match = (match && intVal(m.group(2))) || (match && var(m.group(2))) || (match && intExpr(m.group(2)));
         }
         printMsg(match, "<add_expr>", cmd, "addition expression");
         return match;
@@ -328,8 +329,8 @@ public class Parser {
         boolean match = false;
         Matcher m = sub_expr.matcher(cmd);
         if (m.find()) {
-            match = intVal(m.group(1)) || intExpr(m.group(1));
-            match = ((match && intVal(m.group(2)) || match && intExpr(m.group(2))));
+        	match = intVal(m.group(1)) || var(m.group(1)) || intExpr(m.group(1));
+            match = (match && intVal(m.group(2))) || (match && var(m.group(2))) || (match && intExpr(m.group(2)));
         }
         printMsg(match, "<sub_expr>", cmd, "subtraction expression");
         return match;
@@ -339,8 +340,8 @@ public class Parser {
         boolean match = false;
         Matcher m = mult_expr.matcher(cmd);
         if (m.find()) {
-            match = intVal(m.group(1)) || intExpr(m.group(1));
-            match = ((match && intVal(m.group(2)) || match && intExpr(m.group(2))));
+        	match = intVal(m.group(1)) || var(m.group(1)) || intExpr(m.group(1));
+            match = (match && intVal(m.group(2))) || (match && var(m.group(2))) || (match && intExpr(m.group(2)));
         }
         printMsg(match, "<mult_expr>", cmd, "multiplication expression");
         return match;
@@ -350,8 +351,8 @@ public class Parser {
         boolean match = false;
         Matcher m = div_expr.matcher(cmd);
         if (m.find()) {
-            match = intVal(m.group(1)) || intExpr(m.group(1));
-            match = ((match && intVal(m.group(2)) || match && intExpr(m.group(2))));
+        	match = intVal(m.group(1)) || var(m.group(1)) || intExpr(m.group(1));
+            match = (match && intVal(m.group(2))) || (match && var(m.group(2))) || (match && intExpr(m.group(2)));
         }
         printMsg(match, "<div_expr>", cmd, "division expression");
         return match;
@@ -361,8 +362,8 @@ public class Parser {
         boolean match = false;
         Matcher m = mod_expr.matcher(cmd);
         if (m.find()) {
-            match = intVal(m.group(1)) || intExpr(m.group(1));
-            match = ((match && intVal(m.group(2)) || match && intExpr(m.group(2))));
+            match = intVal(m.group(1)) || var(m.group(1)) || intExpr(m.group(1));
+            match = (match && intVal(m.group(2))) || (match && var(m.group(2))) || (match && intExpr(m.group(2)));
         }
         printMsg(match, "<mod_expr>", cmd, "modulus expression");
         return match;
