@@ -34,24 +34,24 @@ public class Parser {
 	private static final Pattern else_expr = Pattern.compile("^rightWeightClip yourAFailureSo leftWeightClip$");
 
 	private static final Pattern return_expr = Pattern.compile("^gains (.+) pump");
-	private static final Exception InvalidLineExeption;=null;
 
 	private static ScopeTracker scopeTracker = new ScopeTracker();
 	private static ClipTracker clipTracker = new ClipTracker(scopeTracker);
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws InvalidBlockException {
 		Scanner in = new Scanner(System.in);
 		System.out.print(">> ");
 		String cmd = in.nextLine();
 		while (!cmd.equals("exit")) {
 			String pythonLine = parseCmd(cmd);
+			System.out.println(pythonLine);
 			clipTracker.addNewCodeline(cmd);
 			System.out.print(">> ");
 			cmd = in.nextLine();
 		}
 	}
 
-	private static String parseCmd(String cmd) {
+	private static String parseCmd(String cmd) throws InvalidBlockException {
 		String pythonLine = "";
 		try {
 			pythonLine = varAssign(cmd);
@@ -88,12 +88,10 @@ public class Parser {
 			return pythonLine;
 		} catch (InvalidLineException e) {
 		}
-		
-		//ADD INCREMENT EXPRESSION AS ANOTHER POSSIBLE LINE LUKE LAURIE
 		return null;
 	}
 
-	private static String endScope(String cmd) {
+	private static String endScope(String cmd) throws InvalidLineException {
 		Matcher m = end_scope.matcher(cmd);
 		boolean match = m.find();
 		printMsg(match, "\n<end_scope>", cmd, "end of scope");
@@ -102,7 +100,7 @@ public class Parser {
 		return "";
 	}
 
-	private static String loopDec(String cmd) {
+	private static String loopDec(String cmd) throws InvalidLineException, InvalidBlockException {
 		Matcher m = loop_dec.matcher(cmd);
 		if (m.find()) {
 			String variable = var(false, m.group(1)); // group 1 is variable name, group 2 is first bound, group 3 is
@@ -115,44 +113,47 @@ public class Parser {
 			printMsg(false, "\n<loop_dec>", cmd, "loop declaration");
 			throw new InvalidLineException();
 		}
-
-		return "";
 	}
 
-	private static boolean funcDec(String cmd) throws InvalidLineException {
+	private static String funcDec(String cmd) throws InvalidLineException, InvalidBlockException {
 		Matcher m = func_dec.matcher(cmd);
-		boolean match = false;
 		if (m.find()) { // group 1 is the type, group 2 is the name, group 3 is the parameters
-			match = type(m.group(1)); // No need to check group two, it's always valid if found
-			match = match && varDecList(m.group(3));
+			type(m.group(1)); // No need to check group two, it's always valid if found
+			String functionName = m.group(2);
+			String parameters = varDecList(m.group(3));
+			printMsg(true, "\n<func_dec>", cmd, "function declaration");
+			return "def {}({}):".format(functionName, parameters);
 		}
-		printMsg(match, "\n<func_dec>", cmd, "function declaration");
-		return match;
+		printMsg(false, "\n<func_dec>", cmd, "function declaration");
+		throw new InvalidLineException();
 	}
 
-	private static boolean varAssign(String cmd) throws InvalidLineException {
+	private static String varAssign(String cmd) throws InvalidLineException, InvalidBlockException {
 		Matcher m = var_assign.matcher(cmd);
-		boolean match = false;
 		if (m.find()) {
-			match = varDecList(m.group(1));
-			match = match && valList(m.group(2));
+			String variables = varDecList(m.group(1));
+			String values = valList(m.group(2)); 
+			printMsg(true, "\n<var_assign>", cmd, "variable assignment statement");
+			return "{} = {}".format(variables, values);
 		}
-		printMsg(match, "\n<var_assign>", cmd, "variable assignment statement");
-		return match;
+		printMsg(false, "\n<var_assign>", cmd, "variable assignment statement");
+		throw new InvalidLineException();
 	}
 
-	private static boolean varDecList(String cmd) throws InvalidLineException {
+	private static String varDecList(String cmd) throws InvalidLineException, InvalidBlockException {
 		String[] split = cmd.split(", ");
 		boolean match = true;
+		String varDec = "";
 		for (String s : split) {
-			match = match && varDec(s);
+			String variable = varDec(s);
+			if (varDec.equals("")) varDec = variable; 
+			else varDec += ", " + variable;
 		}
 		printMsg(match, "<var_dec_list>", cmd, "variable declaration list");
-		return match;
+		return varDec;
 	}
 
 	private static String varDec(String cmd) throws InvalidLineException, InvalidBlockException {
-		boolean match;
 		Matcher m = type_var_dec.matcher(cmd);
 		String var = "";
 		if (m.find()) {
@@ -160,9 +161,7 @@ public class Parser {
 			var = var(true, m.group(2));
 		} else
 			var = var(true, cmd);
-		printMsg(match, "<var_dec>", cmd, "variable declaration");
-		if (!match)
-			throw new InvalidLineException();
+		printMsg(true, "<var_dec>", cmd, "variable declaration");
 		return var;
 	}
 
@@ -192,17 +191,19 @@ public class Parser {
 		return cmd;
 	}
 
-	private static boolean valList(String cmd) {
+	private static String valList(String cmd) throws InvalidLineException, InvalidBlockException {
 		String[] split = cmd.split(", ");
-		boolean match = true;
+		String valDec = "";
 		for (String s : split) {
-			match = match && val(s);
+			String value = val(s);
+			if (valDec.equals("")) valDec = value; 
+			else valDec += ", " + value;
 		}
-		printMsg(match, "<val_list>", cmd, "value list");
-		return match;
+		printMsg(true, "<val_list>", cmd, "value list");
+		return valDec;
 	}
 
-	private static String val(String cmd) {
+	private static String val(String cmd) throws InvalidLineException, InvalidBlockException {
 		String pythonLine = "";
 		try {
 			pythonLine = intVal(cmd);
@@ -245,7 +246,7 @@ public class Parser {
 
 	}
 
-	private static String strVal(String cmd) {
+	private static String strVal(String cmd) throws InvalidLineException {
 		Matcher m = str_val.matcher(cmd);
 		boolean match = false;
 		if (m.find()) {
@@ -262,17 +263,15 @@ public class Parser {
 		throw new InvalidLineException();
 	}
 
-	private static String boolVal(String cmd) {
-		Matcher m = bool_val.matcher(cmd);
-		someVal(bool_val.matcher(cmd), "<bool>", "<bool>");
+	private static String boolVal(String cmd) throws InvalidLineException {
+		return someVal(bool_val.matcher(cmd), "<bool>", "<bool>");
 	}
 
-	private static String intVal(String cmd) {
-		Matcher m = int_val.matcher(cmd);
-		someVal(int_val.matcher(cmd), "<int>", "<int>");
+	private static String intVal(String cmd) throws InvalidLineException {
+		return someVal(int_val.matcher(cmd), "<int>", "<int>");
 	}
 
-	private static String someVal(Matcher m, String cmd, String type) {
+	private static String someVal(Matcher m, String cmd, String type) throws InvalidLineException {
 		if (m.find()) {
 			printMsg(true, type, cmd, type);
 			return cmd;
@@ -281,101 +280,81 @@ public class Parser {
 		throw new InvalidLineException();
 	}
 
-	private static boolean boolExpr(String cmd) {
+	private static String boolExpr(String cmd) throws InvalidLineException, InvalidBlockException {
 		String pythonLine = "";
 		try {
-			pythonLine = intVal(cmd);
+			pythonLine = andExpr(cmd);
 			return pythonLine;
 		} catch (InvalidLineException e) {
 		}
 		try {
-			pythonLine = boolVal(cmd);
+			pythonLine = orExpr(cmd);
 			return pythonLine;
 		} catch (InvalidLineException e) {
 		}
 		try {
-			pythonLine = var(false, cmd);
+			pythonLine = notExpr(cmd);
 			return pythonLine;
 		} catch (InvalidLineException e) {
 		}
 		try {
-			pythonLine = strVal(cmd);
+			pythonLine = equalExpr(cmd);
 			return pythonLine;
 		} catch (InvalidLineException e) {
 		}
 		try {
-			pythonLine = intExpr(cmd);
+			pythonLine = lessExpr(cmd);
 			return pythonLine;
 		} catch (InvalidLineException e) {
 		}
 		try {
-			pythonLine = boolExpr(cmd);
+			pythonLine = greaterExpr(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
-		try {
-			pythonLine = incrementExpr(cmd);
-			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
-
+		} catch (InvalidLineException e) {}
 		printMsg(false, "<val>", cmd, "value");
-		throw new InvalidLineException();
-
-		
-		
-		boolean match = false;
-		if (andExpr(cmd)) {
-			match = true;
-		} else if (orExpr(cmd)) {
-			match = true;
-		} else if (notExpr(cmd)) {
-			match = true;
-		} else if (equalExpr(cmd)) {
-			match = true;
-		} else if (lessExpr(cmd)) {
-			match = true;
-		} else if (greaterExpr(cmd)) {
-			match = true;
-		}
-		return match;
+		throw new InvalidLineException();		
 	}
 
-	private static String andExpr(String cmd) {
+	private static String andExpr(String cmd) throws InvalidLineException, InvalidBlockException {
 		return someBoolExpr(cmd, and_expr.matcher(cmd), "<and_expr>", "and");
 	}
 
-	private static String orExpr(String cmd) {
+	private static String orExpr(String cmd) throws InvalidLineException, InvalidBlockException {
 		return someBoolExpr(cmd, or_expr.matcher(cmd), "<or_expr>", "or");
 	}
 
-	private static boolean notExpr(String cmd) {
-		boolean match = false;
-		Matcher m = increment.matcher(cmd);
-		if (m.find()) {
-			String leftExpr = null;
-			try {
-				leftExpr = var(false, m.group(1));
-			} catch (InvalidLineException e) {}
-			
-			if (leftExpr != null) {
-				printMsg(true, "<increment_expr>", cmd, "<increment_expr>");
-				return "not {} += 1".format(leftExpr);
-			}
-		}
-		printMsg(false, "<increment_expr>", cmd, "integer increment expression");
-		throw new InvalidLineException();
-		
+	private static String notExpr(String cmd) throws InvalidLineException, InvalidBlockException {
 		boolean match = false;
 		Matcher m = not_expr.matcher(cmd);
 		if (m.find()) {
-			match = boolVal(m.group(1)) || var(false, m.group(1)) || boolExpr(m.group(1));
+			String leftExpr = null;
+			try {
+				leftExpr = boolVal(m.group(1));
+			} catch (InvalidLineException e) {
+			}
+			if (leftExpr == null) {
+				try {
+					leftExpr = var(false, m.group(1));
+				} catch (InvalidLineException e) {
+				}
+			}
+			if (leftExpr == null) {
+				try {
+					leftExpr = boolExpr(m.group(1));
+				} catch (InvalidLineException e) {
+				}
+			}
+
+			if (leftExpr != null) {
+				printMsg(true, "<not_expr>", cmd, "<not_expr>");
+				return "not {}".format(leftExpr);
+			}
 		}
 		printMsg(match, "<not_expr>", cmd, "<not_expr>");
-		return match;
+		throw new InvalidLineException();
 	}
 
-	private static String someBoolExpr(String cmd, Matcher m, String exprName, String symbol) {
+	private static String someBoolExpr(String cmd, Matcher m, String exprName, String symbol) throws InvalidLineException, InvalidBlockException {
 		boolean match = false;
 		if (m.find()) {
 			String leftExpr = null;
@@ -422,16 +401,16 @@ public class Parser {
 		throw new InvalidLineException();
 	}
 
-	private static boolean equalExpr(String cmd) {
-		return someIntExpr(cmd, equal_to.matcher(cmd), "<equal_expr>");
+	private static String equalExpr(String cmd) throws InvalidLineException, InvalidBlockException {
+		return someIntExpr(cmd, equal_to.matcher(cmd), "<equal_expr>", "==");
 	}
 
-	private static boolean lessExpr(String cmd) {
-		return someIntExpr(cmd, less_than.matcher(cmd), "<less_expr>");
+	private static String lessExpr(String cmd) throws InvalidLineException, InvalidBlockException {
+		return someIntExpr(cmd, less_than.matcher(cmd), "<less_expr>", "<");
 	}
 
-	private static boolean greaterExpr(String cmd) {
-		return someIntExpr(cmd, greater_than.matcher(cmd), "<greater_expr>");
+	private static String greaterExpr(String cmd) throws InvalidLineException, InvalidBlockException {
+		return someIntExpr(cmd, greater_than.matcher(cmd), "<greater_expr>", ">");
 	}
 
 	private static void printMsg(boolean match, String ntName, String cmd, String item) {
@@ -441,7 +420,7 @@ public class Parser {
 			System.out.println("Failed to parse: {" + cmd + "} is not a valid " + item + ".");
 	}
 
-	private static String intExpr(String cmd) {
+	private static String intExpr(String cmd) throws InvalidLineException, InvalidBlockException {
 		String pythonLine = "";
 		try {
 			pythonLine = addExpr(cmd);
@@ -473,27 +452,27 @@ public class Parser {
 		throw new InvalidLineException();
 	}
 
-	private static String addExpr(String cmd) {
+	private static String addExpr(String cmd) throws InvalidLineException, InvalidBlockException {
 		return someIntExpr(cmd, add_expr.matcher(cmd), "<add_expr>", "+");
 	}
 
-	private static String subExpr(String cmd) {
+	private static String subExpr(String cmd) throws InvalidLineException, InvalidBlockException {
 		return someIntExpr(cmd, sub_expr.matcher(cmd), "<sub_expr>", "-");
 	}
 
-	private static String multExpr(String cmd) {
+	private static String multExpr(String cmd) throws InvalidLineException, InvalidBlockException {
 		return someIntExpr(cmd, mult_expr.matcher(cmd), "<mult_expr>", "*");
 	}
 
-	private static String divExpr(String cmd) {
+	private static String divExpr(String cmd) throws InvalidLineException, InvalidBlockException {
 		return someIntExpr(cmd, div_expr.matcher(cmd), "<div_expr>", "/");
 	}
 
-	private static String modExpr(String cmd) {
+	private static String modExpr(String cmd) throws InvalidLineException, InvalidBlockException {
 		return someIntExpr(cmd, mod_expr.matcher(cmd), "<mod_expr>", "%");
 	}
 
-	private static String someIntExpr(String cmd, Matcher m, String exprName, String symbol) {
+	private static String someIntExpr(String cmd, Matcher m, String exprName, String symbol) throws InvalidLineException, InvalidBlockException {
 		if (m.find()) {
 			String leftExpr = null;
 			try {
@@ -540,7 +519,7 @@ public class Parser {
 		throw new InvalidLineException();
 	}
 	
-	public static String incrementExpr(String cmd) {
+	public static String incrementExpr(String cmd) throws InvalidLineException, InvalidBlockException {
 		boolean match = false;
 		Matcher m = increment.matcher(cmd);
 		if (m.find()) {
@@ -558,32 +537,50 @@ public class Parser {
 		throw new InvalidLineException();
 	}
 
-	public static boolean ifExpr(String cmd) {
+	public static String ifExpr(String cmd) throws InvalidLineException, InvalidBlockException {
 		boolean match = false;
 		Matcher m = if_expr.matcher(cmd);
 		if (m.find()) {
 			// can either match integer values or more integer expressions
-			match = boolExpr(m.group(1)) || var(false, m.group(1));
+			String leftExpr = null;
+			try {
+				leftExpr = boolExpr(m.group(1));
+			} catch (InvalidLineException e) {}
+			try {
+				leftExpr = var(false, m.group(1));
+			} catch (InvalidLineException e) {}
+			try {
+				leftExpr = boolVal(m.group(1));
+			} catch (InvalidLineException e) {}
+			
+			if (leftExpr != null) {
+				printMsg(true, "<if_expr>", cmd, "if expression");
+				return "if {}:".format(leftExpr);
+			}
 		}
-		printMsg(match, "<if_expr>", cmd, "if expression");
-		return match;
+		printMsg(false, "<if_expr>", cmd, "if expression");
+		throw new InvalidLineException();
 	}
 
-	public static boolean elseExpr(String cmd) {
-		boolean match;
+	public static String elseExpr(String cmd) throws InvalidLineException {
 		Matcher m = else_expr.matcher(cmd);
-		match = m.find();
-		printMsg(match, "<else_expr>", cmd, "else expression");
-		return match;
+		if(!m.find()) {
+			printMsg(false, "<else_expr>", cmd, "else expression");
+			throw new InvalidLineException();
+		}
+		printMsg(true, "<else_expr>", cmd, "else expression");
+		return "else:";
 	}
 
-	public static boolean returnExpr(String cmd) {
+	public static String returnExpr(String cmd) throws InvalidLineException, InvalidBlockException {
 		boolean match = false;
 		Matcher m = return_expr.matcher(cmd);
 		if (m.find()) {
-			match = val(m.group(1));
+			String value = val(m.group(1));
+			printMsg(true, "<return_expr>", cmd, "return expression");
+			return "return {}:".format(value);
 		}
-		printMsg(match, "<return_expr>", cmd, "return expression");
-		return match;
+		printMsg(false, "<return_expr>", cmd, "return expression");
+		throw new InvalidLineException();
 	}
 }
