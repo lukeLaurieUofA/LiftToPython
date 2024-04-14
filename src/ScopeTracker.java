@@ -1,47 +1,31 @@
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.Stack;
+import java.util.ArrayList;
 
 public class ScopeTracker {
-	private Deque<PythonLine> codeIndentation;
-
+	ArrayList<String> varTracker; 
+	
 	public ScopeTracker() {
-		codeIndentation = new ArrayDeque();
+		varTracker = new ArrayList<String>();
 	}
-
-	public void addNewCodeline(String codeLine) {
-		int indentAmount = 0;
-		int nextIndentAmount = 0;
-
-		if (!codeIndentation.isEmpty()) {
-			indentAmount = codeIndentation.peek().getNextIndentCount();
-			nextIndentAmount = codeIndentation.peek().getNextIndentCount();
+	
+	public void addNewVar(String newVariable) {
+		varTracker.add(newVariable);
+	} 
+	
+	public void checkVarUsable(String varToCheck) throws Exception {
+		if (!varTracker.contains(varToCheck)) {
+			throw new Exception("You gotta hit the gym before you can that muscle group(please define " + varToCheck + " before using)");
 		}
-		// determine if the line contains a open or closing bracket
-		String[] lineMaterial = codeLine.split(" ");
-		String closing = lineMaterial.length == 0 ? "" : lineMaterial[lineMaterial.length - 1];
-		// generate the next python line
-		PythonLine pythonLine;
-		if (closing.equals("leftWeightClip")) {
-			nextIndentAmount = indentAmount + 1;
-		} else if (closing.equals("rightWeightClip")) {
-			indentAmount = indentAmount - 1;
-			nextIndentAmount = indentAmount;
-		}
-		pythonLine = new PythonLine(indentAmount, nextIndentAmount, codeLine);
-		// add the new line to out deque
-		codeIndentation.push(pythonLine);
 	}
-
-	public void displayLines() throws Exception {
-		System.out.println("displaying lines now:");
-		while (!codeIndentation.isEmpty()) {
-			PythonLine pythonLine = codeIndentation.removeLast();
-			// check that there are matching left and right weight clips
-			if (pythonLine.getIndentCount() < 0 || (codeIndentation.isEmpty() && pythonLine.getIndentCount() != 0)) {
-				throw new Exception("Error: file has unmatching leftWeightClip and rightWeightClip");
-			}
-			System.out.println(pythonLine);
+	
+	public void insertNewBlock() {
+		varTracker.add(null);
+	}
+	
+	public void endBlock() {
+		int i = varTracker.size() - 1;
+		while (i >= 0 && varTracker.get(i) != null) {
+			varTracker.remove(i);
+			i--;
 		}
 	}
 }
