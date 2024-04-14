@@ -32,6 +32,8 @@ public class Parser {
     private static final Pattern else_expr = Pattern.compile("^rightWeightClip yourAFailureSo leftWeightClip$");
 
     private static final Pattern return_expr = Pattern.compile("^gains (.+) pump");
+    
+    private static String pythonLine = "";
 
     public static void main(String[] args) {
         Scanner in = new Scanner(System.in);
@@ -45,6 +47,7 @@ public class Parser {
     }
 
     private static void parseCmd(String cmd) {
+    	pythonLine = "";
         if(varAssign(cmd)) {
             System.out.println("<stmt>");
         } else if(funcDec(cmd)) {
