@@ -6,7 +6,7 @@ public class Parser {
 	private static final Pattern var_assign = Pattern.compile("^(.+) loadBar (.+) pump$");
 	private static final Pattern func_dec = Pattern.compile("^workout (.+) (.+)[(](.+)[)] leftWeightClip$");
 	private static final Pattern loop_dec = Pattern.compile("^set (.+), (.+) to (.+) leftWeightClip$");
-	private static final Pattern type_var_dec = Pattern.compile("^(\\w+) (\\w+)$");
+	private static final Pattern type_var_dec = Pattern.compile("^(\\w+) (.+)$");
 	private static final Pattern type = Pattern
 			.compile("^ryanBullard$|^lightWeight$|^weight$|^cables$|^pr$|^samSulek$");
 	private static final Pattern var = Pattern.compile(
@@ -14,7 +14,7 @@ public class Parser {
 					+ "glutes(\\d)*$|^calves(\\d)*$|^forearms(\\d)*$");
 	private static final Pattern int_val = Pattern.compile("^\\d+$|^-\\d+$|^-\\d+[.]\\d+$|^\\d+[.]\\d+$");
 	private static final Pattern str_val = Pattern.compile("^\"(.*)\"$");
-	private static final Pattern bool = Pattern.compile("^gotItUp$|^failed$");
+	private static final Pattern bool_val = Pattern.compile("^gotItUp$|^failed$");
 	private static final Pattern end_scope = Pattern.compile("^rightWeightClip$");
 	private static final Pattern add_expr = Pattern.compile("^(.+) creatine (.+)$");
 	private static final Pattern sub_expr = Pattern.compile("^(.+) restDay (.+)$");
@@ -34,6 +34,7 @@ public class Parser {
 	private static final Pattern else_expr = Pattern.compile("^rightWeightClip yourAFailureSo leftWeightClip$");
 
 	private static final Pattern return_expr = Pattern.compile("^gains (.+) pump");
+	private static final Exception InvalidLineExeption;=null;
 
 	private static ScopeTracker scopeTracker = new ScopeTracker();
 	private static ClipTracker clipTracker = new ClipTracker(scopeTracker);
@@ -55,54 +56,70 @@ public class Parser {
 		try {
 			pythonLine = varAssign(cmd);
 			return pythonLine;
-		} catch (Exception e) {}
+		} catch (InvalidLineException e) {
+		}
 		try {
 			pythonLine = funcDec(cmd);
 			return pythonLine;
-		} catch (Exception e) {}
+		} catch (InvalidLineException e) {
+		}
 		try {
 			pythonLine = loopDec(cmd);
 			return pythonLine;
-		} catch (Exception e) {}
+		} catch (InvalidLineException e) {
+		}
 		try {
 			pythonLine = endScope(cmd);
 			return pythonLine;
-		} catch (Exception e) {}
+		} catch (InvalidLineException e) {
+		}
 		try {
 			pythonLine = ifExpr(cmd);
 			return pythonLine;
-		} catch (Exception e) {}
+		} catch (InvalidLineException e) {
+		}
 		try {
 			pythonLine = elseExpr(cmd);
 			return pythonLine;
-		} catch (Exception e) {}
+		} catch (InvalidLineException e) {
+		}
 		try {
 			pythonLine = returnExpr(cmd);
 			return pythonLine;
-		} catch (Exception e) {}
+		} catch (InvalidLineException e) {
+		}
+		
+		//ADD INCREMENT EXPRESSION AS ANOTHER POSSIBLE LINE LUKE LAURIE
 		return null;
 	}
 
-	private static boolean endScope(String cmd) {
+	private static String endScope(String cmd) {
 		Matcher m = end_scope.matcher(cmd);
 		boolean match = m.find();
 		printMsg(match, "\n<end_scope>", cmd, "end of scope");
-		return match;
+		if (!match)
+			throw new InvalidLineException();
+		return "";
 	}
 
-	private static boolean loopDec(String cmd) {
+	private static String loopDec(String cmd) {
 		Matcher m = loop_dec.matcher(cmd);
-		boolean match = false;
 		if (m.find()) {
-			match = var(false, m.group(1)); // group 1 is variable name, group 2 is first bound, group 3 is second bound
-			match = match && val(m.group(2));
-			match = match && val(m.group(3));
+			String variable = var(false, m.group(1)); // group 1 is variable name, group 2 is first bound, group 3 is
+														// second bound
+			String fromVal = val(m.group(2));
+			String toVal = val(m.group(3));
+			printMsg(true, "\n<loop_dec>", cmd, "loop declaration");
+			return "for {} in range({},{}):".format(variable, fromVal, toVal);
+		} else {
+			printMsg(false, "\n<loop_dec>", cmd, "loop declaration");
+			throw new InvalidLineException();
 		}
-		printMsg(match, "\n<loop_dec>", cmd, "loop declaration");
-		return match;
+
+		return "";
 	}
 
-	private static boolean funcDec(String cmd) throws Exception {
+	private static boolean funcDec(String cmd) throws InvalidLineException {
 		Matcher m = func_dec.matcher(cmd);
 		boolean match = false;
 		if (m.find()) { // group 1 is the type, group 2 is the name, group 3 is the parameters
@@ -113,7 +130,7 @@ public class Parser {
 		return match;
 	}
 
-	private static boolean varAssign(String cmd) throws Exception {
+	private static boolean varAssign(String cmd) throws InvalidLineException {
 		Matcher m = var_assign.matcher(cmd);
 		boolean match = false;
 		if (m.find()) {
@@ -124,7 +141,7 @@ public class Parser {
 		return match;
 	}
 
-	private static boolean varDecList(String cmd) throws Exception {
+	private static boolean varDecList(String cmd) throws InvalidLineException {
 		String[] split = cmd.split(", ");
 		boolean match = true;
 		for (String s : split) {
@@ -134,42 +151,45 @@ public class Parser {
 		return match;
 	}
 
-	private static boolean varDec(String cmd) throws Exception {
+	private static String varDec(String cmd) throws InvalidLineException, InvalidBlockException {
 		boolean match;
 		Matcher m = type_var_dec.matcher(cmd);
+		String var = "";
 		if (m.find()) {
-			match = type(m.group(1));
-			match = match && var(true, m.group(2));
+			type(m.group(1));
+			var = var(true, m.group(2));
 		} else
-			match = var(true, cmd);
+			var = var(true, cmd);
 		printMsg(match, "<var_dec>", cmd, "variable declaration");
-		return match;
+		if (!match)
+			throw new InvalidLineException();
+		return var;
 	}
 
-	private static boolean type(String cmd) throws Exception {
+	private static void type(String cmd) throws InvalidLineException {
 		Matcher m = type.matcher(cmd);
 		boolean match = m.find();
 		printMsg(match, "<type>", cmd, "type");
-		throw new Exception("You can't use that type, please learn proper gym etiquette.");
-		return match;
+		if (!match)
+			throw new InvalidLineException();
 	}
 
-	private static boolean var(boolean isNewVar, String cmd) {
+	private static String var(boolean isNewVar, String cmd) throws InvalidBlockException, InvalidLineException {
 		Matcher m = var.matcher(cmd);
 		boolean match = m.find();
 		if (match) {
 			if (isNewVar) {
 				scopeTracker.addNewVar(cmd);
 			} else {
-				try {
-					scopeTracker.checkVarUsable(cmd);
-				} catch (Exception e) {
-					System.out.println(e.getMessage());
-				}
+				scopeTracker.checkVarUsable(cmd);
 			}
-		}
+		} else
+			throw new InvalidLineException();
 		printMsg(match, "<var>", cmd, "variable");
-		return match;
+		if (!match)
+			throw new InvalidLineException();
+
+		return cmd;
 	}
 
 	private static boolean valList(String cmd) {
@@ -182,28 +202,50 @@ public class Parser {
 		return match;
 	}
 
-	private static boolean val(String cmd) {
-		boolean match = false;
-		if (intVal(cmd)) {
-			match = true;
-		} else if (boolVal(cmd)) {
-			match = true;
-		} else if (var(false, cmd)) {
-			match = true;
-		} else if (strVal(cmd)) {
-			match = true;
-		} else if (intExpr(cmd)) {
-			match = true;
-		} else if (boolExpr(cmd)) {
-			match = true;
-		} else if (incrementExpr(cmd)) {
-			match = true;
+	private static String val(String cmd) {
+		String pythonLine = "";
+		try {
+			pythonLine = intVal(cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
 		}
-		printMsg(match, "<val>", cmd, "value");
-		return match;
+		try {
+			pythonLine = boolVal(cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
+		}
+		try {
+			pythonLine = var(false, cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
+		}
+		try {
+			pythonLine = strVal(cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
+		}
+		try {
+			pythonLine = intExpr(cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
+		}
+		try {
+			pythonLine = boolExpr(cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
+		}
+		try {
+			pythonLine = incrementExpr(cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
+		}
+
+		printMsg(false, "<val>", cmd, "value");
+		throw new InvalidLineException();
+
 	}
 
-	private static boolean strVal(String cmd) {
+	private static String strVal(String cmd) {
 		Matcher m = str_val.matcher(cmd);
 		boolean match = false;
 		if (m.find()) {
@@ -213,20 +255,75 @@ public class Parser {
 				match = false;
 			}
 		}
-		printMsg(match, "\n<str_val>", cmd, "string value");
-		return match;
+
+		printMsg(match, "<str_val>", cmd, "<str_val>");
+		if (match)
+			return cmd;
+		throw new InvalidLineException();
 	}
 
-	private static boolean boolVal(String cmd) {
-		Matcher m = bool.matcher(cmd);
-		boolean match = m.find();
-		if (match) {
-			printMsg(true, "<bool>", cmd, "boolean");
+	private static String boolVal(String cmd) {
+		Matcher m = bool_val.matcher(cmd);
+		someVal(bool_val.matcher(cmd), "<bool>", "<bool>");
+	}
+
+	private static String intVal(String cmd) {
+		Matcher m = int_val.matcher(cmd);
+		someVal(int_val.matcher(cmd), "<int>", "<int>");
+	}
+
+	private static String someVal(Matcher m, String cmd, String type) {
+		if (m.find()) {
+			printMsg(true, type, cmd, type);
+			return cmd;
 		}
-		return match;
+		printMsg(false, type, cmd, type);
+		throw new InvalidLineException();
 	}
 
 	private static boolean boolExpr(String cmd) {
+		String pythonLine = "";
+		try {
+			pythonLine = intVal(cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
+		}
+		try {
+			pythonLine = boolVal(cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
+		}
+		try {
+			pythonLine = var(false, cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
+		}
+		try {
+			pythonLine = strVal(cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
+		}
+		try {
+			pythonLine = intExpr(cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
+		}
+		try {
+			pythonLine = boolExpr(cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
+		}
+		try {
+			pythonLine = incrementExpr(cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
+		}
+
+		printMsg(false, "<val>", cmd, "value");
+		throw new InvalidLineException();
+
+		
+		
 		boolean match = false;
 		if (andExpr(cmd)) {
 			match = true;
@@ -244,15 +341,31 @@ public class Parser {
 		return match;
 	}
 
-	private static boolean andExpr(String cmd) {
-		return matchInt(cmd, and_expr.matcher(cmd), "<and_expr>");
+	private static String andExpr(String cmd) {
+		return someBoolExpr(cmd, and_expr.matcher(cmd), "<and_expr>", "and");
 	}
 
-	private static boolean orExpr(String cmd) {
-		return matchInt(cmd, or_expr.matcher(cmd), "<or_expr>");
+	private static String orExpr(String cmd) {
+		return someBoolExpr(cmd, or_expr.matcher(cmd), "<or_expr>", "or");
 	}
 
 	private static boolean notExpr(String cmd) {
+		boolean match = false;
+		Matcher m = increment.matcher(cmd);
+		if (m.find()) {
+			String leftExpr = null;
+			try {
+				leftExpr = var(false, m.group(1));
+			} catch (InvalidLineException e) {}
+			
+			if (leftExpr != null) {
+				printMsg(true, "<increment_expr>", cmd, "<increment_expr>");
+				return "not {} += 1".format(leftExpr);
+			}
+		}
+		printMsg(false, "<increment_expr>", cmd, "integer increment expression");
+		throw new InvalidLineException();
+		
 		boolean match = false;
 		Matcher m = not_expr.matcher(cmd);
 		if (m.find()) {
@@ -262,27 +375,63 @@ public class Parser {
 		return match;
 	}
 
-	private static boolean matchBool(String cmd, Matcher m, String exprName) {
+	private static String someBoolExpr(String cmd, Matcher m, String exprName, String symbol) {
 		boolean match = false;
 		if (m.find()) {
-			match = boolVal(m.group(1)) || var(false, m.group(1)) || boolExpr(m.group(1));
-			match = (match && boolVal(m.group(2))) || (match && var(false, m.group(2)))
-					|| (match && boolExpr(m.group(2)));
+			String leftExpr = null;
+			try {
+				leftExpr = boolVal(m.group(1));
+			} catch (InvalidLineException e) {
+			}
+			if (leftExpr == null) {
+				try {
+					leftExpr = var(false, m.group(1));
+				} catch (InvalidLineException e) {
+				}
+			}
+			if (leftExpr == null) {
+				try {
+					leftExpr = boolExpr(m.group(1));
+				} catch (InvalidLineException e) {
+				}
+			}
+
+			String rightExpr = null;
+			try {
+				rightExpr = boolVal(m.group(2));
+			} catch (InvalidLineException e) {
+			}
+			if (rightExpr == null) {
+				try {
+					rightExpr = var(false, m.group(2));
+				} catch (InvalidLineException e) {
+				}
+			}
+			if (rightExpr == null) {
+				try {
+					rightExpr = boolExpr(m.group(2));
+				} catch (InvalidLineException e) {
+				}
+			}
+			if (leftExpr != null && rightExpr != null) {
+				printMsg(true, exprName, cmd, exprName);
+				return "{} {} {}".format(leftExpr, symbol, rightExpr);
+			}
 		}
-		printMsg(match, exprName, cmd, exprName);
-		return match;
+		printMsg(false, exprName, cmd, exprName);
+		throw new InvalidLineException();
 	}
 
 	private static boolean equalExpr(String cmd) {
-		return matchInt(cmd, equal_to.matcher(cmd), "<equal_expr>");
+		return someIntExpr(cmd, equal_to.matcher(cmd), "<equal_expr>");
 	}
 
 	private static boolean lessExpr(String cmd) {
-		return matchInt(cmd, less_than.matcher(cmd), "<less_expr>");
+		return someIntExpr(cmd, less_than.matcher(cmd), "<less_expr>");
 	}
 
 	private static boolean greaterExpr(String cmd) {
-		return matchInt(cmd, greater_than.matcher(cmd), "<greater_expr>");
+		return someIntExpr(cmd, greater_than.matcher(cmd), "<greater_expr>");
 	}
 
 	private static void printMsg(boolean match, String ntName, String cmd, String item) {
@@ -292,74 +441,121 @@ public class Parser {
 			System.out.println("Failed to parse: {" + cmd + "} is not a valid " + item + ".");
 	}
 
-	private static boolean intVal(String cmd) {
-		Matcher m = int_val.matcher(cmd);
-		boolean match = m.find();
-		if (match) {
-			printMsg(true, "<int>", cmd, "integer");
+	private static String intExpr(String cmd) {
+		String pythonLine = "";
+		try {
+			pythonLine = addExpr(cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
 		}
-		printMsg(match, "<val>", cmd, "integer value");
-		return match;
-	}
-
-	private static boolean intExpr(String cmd) {
-		boolean match = false;
-		if (addExpr(cmd)) {
-			match = true;
-		} else if (subExpr(cmd)) {
-			match = true;
-		} else if (multExpr(cmd)) {
-			match = true;
-		} else if (divExpr(cmd)) {
-			match = true;
-		} else if (modExpr(cmd)) {
-			match = true;
-		} else if (incrementExpr(cmd)) {
-			match = true;
+		try {
+			pythonLine = subExpr(cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
 		}
-		return match;
+		try {
+			pythonLine = multExpr(cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
+		}
+		try {
+			pythonLine = divExpr(cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
+		}
+		try {
+			pythonLine = modExpr(cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
+		}
+
+		printMsg(false, "<val>", cmd, "value");
+		throw new InvalidLineException();
 	}
 
-	private static boolean addExpr(String cmd) {
-		return matchInt(cmd, add_expr.matcher(cmd), "<add_expr>");
+	private static String addExpr(String cmd) {
+		return someIntExpr(cmd, add_expr.matcher(cmd), "<add_expr>", "+");
 	}
 
-	private static boolean subExpr(String cmd) {
-		return matchInt(cmd, sub_expr.matcher(cmd), "<sub_expr>");
+	private static String subExpr(String cmd) {
+		return someIntExpr(cmd, sub_expr.matcher(cmd), "<sub_expr>", "-");
 	}
 
-	private static boolean multExpr(String cmd) {
-		return matchInt(cmd, mult_expr.matcher(cmd), "<mult_expr>");
+	private static String multExpr(String cmd) {
+		return someIntExpr(cmd, mult_expr.matcher(cmd), "<mult_expr>", "*");
 	}
 
-	private static boolean divExpr(String cmd) {
-		return matchInt(cmd, div_expr.matcher(cmd), "<div_expr>");
+	private static String divExpr(String cmd) {
+		return someIntExpr(cmd, div_expr.matcher(cmd), "<div_expr>", "/");
 	}
 
-	private static boolean modExpr(String cmd) {
-		return matchInt(cmd, mod_expr.matcher(cmd), "<mod_expr>");
+	private static String modExpr(String cmd) {
+		return someIntExpr(cmd, mod_expr.matcher(cmd), "<mod_expr>", "%");
 	}
 
-	private static boolean matchInt(String cmd, Matcher m, String exprName) {
-		boolean match = false;
+	private static String someIntExpr(String cmd, Matcher m, String exprName, String symbol) {
 		if (m.find()) {
-			match = intVal(m.group(1)) || var(false, m.group(1)) || intExpr(m.group(1));
-			match = (match && intVal(m.group(2))) || (match && var(false, m.group(2)))
-					|| (match && intExpr(m.group(2)));
-		}
-		printMsg(match, exprName, cmd, exprName);
-		return match;
-	}
+			String leftExpr = null;
+			try {
+				leftExpr = intVal(m.group(1));
+			} catch (InvalidLineException e) {
+			}
+			if (leftExpr == null) {
+				try {
+					leftExpr = var(false, m.group(1));
+				} catch (InvalidLineException e) {
+				}
+			}
+			if (leftExpr == null) {
+				try {
+					leftExpr = intExpr(m.group(1));
+				} catch (InvalidLineException e) {
+				}
+			}
 
-	public static boolean incrementExpr(String cmd) {
+			String rightExpr = null;
+			try {
+				rightExpr = intVal(m.group(2));
+			} catch (InvalidLineException e) {
+			}
+			if (rightExpr == null) {
+				try {
+					rightExpr = var(false, m.group(2));
+				} catch (InvalidLineException e) {
+				}
+			}
+			if (rightExpr == null) {
+				try {
+					rightExpr = intExpr(m.group(2));
+				} catch (InvalidLineException e) {
+				}
+			}
+
+			if (leftExpr != null && rightExpr != null) {
+				printMsg(true, exprName, cmd, exprName);
+				return "{} {} {}".format(leftExpr, symbol, rightExpr);
+			}
+		}
+		printMsg(false, exprName, cmd, exprName);
+		throw new InvalidLineException();
+	}
+	
+	public static String incrementExpr(String cmd) {
 		boolean match = false;
 		Matcher m = increment.matcher(cmd);
 		if (m.find()) {
-			// can either match integer values or more integer expressions
-			match = intExpr(m.group(1)) || var(false, m.group(1)) || intVal(m.group(1));
+			String leftExpr = null;
+			try {
+				leftExpr = var(false, m.group(1));
+			} catch (InvalidLineException e) {}
+			
+			if (leftExpr != null) {
+				printMsg(true, "<increment_expr>", cmd, "<increment_expr>");
+				return "{} += 1".format(leftExpr);
+			}
 		}
-		printMsg(match, "<increment_expr>", cmd, "integer increment expression");
-		return match;
+		printMsg(false, "<increment_expr>", cmd, "integer increment expression");
+		throw new InvalidLineException();
 	}
 
 	public static boolean ifExpr(String cmd) {

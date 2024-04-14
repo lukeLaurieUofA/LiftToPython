@@ -11,9 +11,9 @@ public class ScopeTracker {
 		varTracker.add(newVariable);
 	} 
 	
-	public void checkVarUsable(String varToCheck) throws Exception {
+	public void checkVarUsable(String varToCheck) throws InvalidBlockException {
 		if (!varTracker.contains(varToCheck)) {
-			throw new Exception("You gotta hit the gym before you can that muscle group(please define " + varToCheck + " before using)");
+			throw new InvalidBlockException("You gotta hit the gym before you can that muscle group(please define " + varToCheck + " before using)");
 		}
 	}
 	
