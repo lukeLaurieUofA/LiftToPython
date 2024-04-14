@@ -30,25 +30,29 @@ public class Parser {
 	private static final Pattern less_than = Pattern.compile("^(.+) smallerThan (.+)$");
 	private static final Pattern equal_to = Pattern.compile("^(.+) sameSize (.+)$");
 	private static final Pattern increment = Pattern.compile("^(.+) superset$");
-	private static final Pattern if_expr = Pattern.compile("^canYouLift[(](.+)[)] leftWeightClip$");
+	private static final Pattern if_expr = Pattern.compile("^canYouLift [(](.+)[)] leftWeightClip$");
 	private static final Pattern else_expr = Pattern.compile("^rightWeightClip yourAFailureSo leftWeightClip$");
 
-	private static final Pattern return_expr = Pattern.compile("^gains (.+) pump");
+	private static final Pattern return_expr = Pattern.compile("^gains (.+) pump$");
+	private static final Pattern print_expr = Pattern.compile("^showoff[(]\"(.*)\"[)] pump$");
 
 	private static ScopeTracker scopeTracker = new ScopeTracker();
 	private static ClipTracker clipTracker = new ClipTracker(scopeTracker);
 
-	public static void main(String[] args) throws InvalidBlockException {
+	public static void main(String[] args) throws Exception {
 		Scanner in = new Scanner(System.in);
 		System.out.print(">> ");
 		String cmd = in.nextLine();
-		while (!cmd.equals("exit")) {
+		while (!cmd.equals("leave gym")) {
+			cmd = cmd.trim();
 			String pythonLine = parseCmd(cmd);
-			System.out.println(pythonLine);
-			clipTracker.addNewCodeline(cmd);
+			if(pythonLine == null) throw new InvalidLineException("invalid line {" + cmd + "} blud");
+			//System.out.println(pythonLine);
+			clipTracker.addNewCodeline(cmd, pythonLine);
 			System.out.print(">> ");
 			cmd = in.nextLine();
 		}
+		clipTracker.displayLines();
 	}
 
 	private static String parseCmd(String cmd) throws InvalidBlockException {
@@ -88,6 +92,11 @@ public class Parser {
 			return pythonLine;
 		} catch (InvalidLineException e) {
 		}
+		try {
+			pythonLine = printExpr(cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
+		}
 		return null;
 	}
 
@@ -108,7 +117,7 @@ public class Parser {
 			String fromVal = val(m.group(2));
 			String toVal = val(m.group(3));
 			printMsg(true, "\n<loop_dec>", cmd, "loop declaration");
-			return "for {} in range({},{}):".format(variable, fromVal, toVal);
+			return String.format("for %s in range(%s,%s):", variable, fromVal, toVal);
 		} else {
 			printMsg(false, "\n<loop_dec>", cmd, "loop declaration");
 			throw new InvalidLineException();
@@ -122,7 +131,7 @@ public class Parser {
 			String functionName = m.group(2);
 			String parameters = varDecList(m.group(3));
 			printMsg(true, "\n<func_dec>", cmd, "function declaration");
-			return "def {}({}):".format(functionName, parameters);
+			return String.format("def %s(%s):", functionName, parameters);
 		}
 		printMsg(false, "\n<func_dec>", cmd, "function declaration");
 		throw new InvalidLineException();
@@ -134,7 +143,7 @@ public class Parser {
 			String variables = varDecList(m.group(1));
 			String values = valList(m.group(2)); 
 			printMsg(true, "\n<var_assign>", cmd, "variable assignment statement");
-			return "{} = {}".format(variables, values);
+			return String.format("%s = %s", variables, values);
 		}
 		printMsg(false, "\n<var_assign>", cmd, "variable assignment statement");
 		throw new InvalidLineException();
@@ -264,11 +273,11 @@ public class Parser {
 	}
 
 	private static String boolVal(String cmd) throws InvalidLineException {
-		return someVal(bool_val.matcher(cmd), "<bool>", "<bool>");
+		return someVal(bool_val.matcher(cmd), cmd, "<bool>");
 	}
 
 	private static String intVal(String cmd) throws InvalidLineException {
-		return someVal(int_val.matcher(cmd), "<int>", "<int>");
+		return someVal(int_val.matcher(cmd), cmd, "<int>");
 	}
 
 	private static String someVal(Matcher m, String cmd, String type) throws InvalidLineException {
@@ -347,7 +356,7 @@ public class Parser {
 
 			if (leftExpr != null) {
 				printMsg(true, "<not_expr>", cmd, "<not_expr>");
-				return "not {}".format(leftExpr);
+				return String.format("not %s", leftExpr);
 			}
 		}
 		printMsg(match, "<not_expr>", cmd, "<not_expr>");
@@ -355,7 +364,6 @@ public class Parser {
 	}
 
 	private static String someBoolExpr(String cmd, Matcher m, String exprName, String symbol) throws InvalidLineException, InvalidBlockException {
-		boolean match = false;
 		if (m.find()) {
 			String leftExpr = null;
 			try {
@@ -394,7 +402,7 @@ public class Parser {
 			}
 			if (leftExpr != null && rightExpr != null) {
 				printMsg(true, exprName, cmd, exprName);
-				return "{} {} {}".format(leftExpr, symbol, rightExpr);
+				return String.format("%s %s %s", leftExpr, symbol, rightExpr);
 			}
 		}
 		printMsg(false, exprName, cmd, exprName);
@@ -512,7 +520,7 @@ public class Parser {
 
 			if (leftExpr != null && rightExpr != null) {
 				printMsg(true, exprName, cmd, exprName);
-				return "{} {} {}".format(leftExpr, symbol, rightExpr);
+				return String.format("%s %s %s", leftExpr, symbol, rightExpr);
 			}
 		}
 		printMsg(false, exprName, cmd, exprName);
@@ -520,7 +528,6 @@ public class Parser {
 	}
 	
 	public static String incrementExpr(String cmd) throws InvalidLineException, InvalidBlockException {
-		boolean match = false;
 		Matcher m = increment.matcher(cmd);
 		if (m.find()) {
 			String leftExpr = null;
@@ -530,7 +537,7 @@ public class Parser {
 			
 			if (leftExpr != null) {
 				printMsg(true, "<increment_expr>", cmd, "<increment_expr>");
-				return "{} += 1".format(leftExpr);
+				return String.format("%s += 1",leftExpr);
 			}
 		}
 		printMsg(false, "<increment_expr>", cmd, "integer increment expression");
@@ -538,7 +545,6 @@ public class Parser {
 	}
 
 	public static String ifExpr(String cmd) throws InvalidLineException, InvalidBlockException {
-		boolean match = false;
 		Matcher m = if_expr.matcher(cmd);
 		if (m.find()) {
 			// can either match integer values or more integer expressions
@@ -546,16 +552,20 @@ public class Parser {
 			try {
 				leftExpr = boolExpr(m.group(1));
 			} catch (InvalidLineException e) {}
-			try {
-				leftExpr = var(false, m.group(1));
-			} catch (InvalidLineException e) {}
-			try {
-				leftExpr = boolVal(m.group(1));
-			} catch (InvalidLineException e) {}
+			if (leftExpr == null) {
+				try {
+					leftExpr = var(false, m.group(1));
+				} catch (InvalidLineException e) {}
+			}
+			if(leftExpr == null) {
+				try {
+					leftExpr = boolVal(m.group(1));
+				} catch (InvalidLineException e) {}
+			}
 			
 			if (leftExpr != null) {
 				printMsg(true, "<if_expr>", cmd, "if expression");
-				return "if {}:".format(leftExpr);
+				return String.format("if %s:",leftExpr);
 			}
 		}
 		printMsg(false, "<if_expr>", cmd, "if expression");
@@ -573,14 +583,24 @@ public class Parser {
 	}
 
 	public static String returnExpr(String cmd) throws InvalidLineException, InvalidBlockException {
-		boolean match = false;
 		Matcher m = return_expr.matcher(cmd);
 		if (m.find()) {
 			String value = val(m.group(1));
 			printMsg(true, "<return_expr>", cmd, "return expression");
-			return "return {}:".format(value);
+			return String.format("return %s", value);
 		}
 		printMsg(false, "<return_expr>", cmd, "return expression");
+		throw new InvalidLineException();
+	}
+	
+	private static String printExpr(String cmd) throws InvalidLineException, InvalidBlockException {
+		Matcher m = print_expr.matcher(cmd);
+		if (m.find()) {
+			String value = m.group(1);
+			printMsg(true, "<print_expr>", cmd, "print expression");
+			return String.format("print(\"%s\")", value);
+		}
+		printMsg(false, "<print_expr>", cmd, "print expression");
 		throw new InvalidLineException();
 	}
 }

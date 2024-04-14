@@ -1,4 +1,8 @@
 
 public class Test {
-	if(!match) throw new InvalidLineException();
+	public static void main( String args[])
+	{
+		String hi = "  hello  ";
+		System.out.println("showoff(\"(.*)\")");
+	}
 }

@@ -11,7 +11,7 @@ public class ClipTracker {
 		this.scopeTracker = scopeTracker;
 	}
 
-	public void addNewCodeline(String codeLine) {
+	public void addNewCodeline(String codeLine, String pyLine) {
 		int indentAmount = 0;
 		int nextIndentAmount = 0;
 
@@ -22,17 +22,19 @@ public class ClipTracker {
 		// determine if the line contains a open or closing bracket
 		String[] lineMaterial = codeLine.split(" ");
 		String closing = lineMaterial.length == 0 ? "" : lineMaterial[lineMaterial.length - 1];
-		// generate the next python line
-		PythonLine pythonLine;
+		String opening = lineMaterial.length == 0 ? "" : lineMaterial[0];
+		
 		if (closing.equals("leftWeightClip")) {
 			nextIndentAmount = indentAmount + 1;
 			scopeTracker.insertNewBlock();
-		} else if (closing.equals("rightWeightClip")) {
+		} else if(opening.equals("rightWeightClip")) {
 			indentAmount = indentAmount - 1;
 			nextIndentAmount = indentAmount;
 			scopeTracker.endBlock();
 		}
-		pythonLine = new PythonLine(indentAmount, nextIndentAmount, codeLine);
+		
+		// generate the next indented python line
+		PythonLine pythonLine = new PythonLine(indentAmount, nextIndentAmount, codeLine, pyLine);
 		// add the new line to out deque
 		codeIndentation.push(pythonLine);
 	}

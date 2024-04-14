@@ -3,15 +3,24 @@ import java.util.regex.Pattern;
 
 public class PythonLine {
 	
+	private String pythonCodeLine;
 	private int indentCount; 
 	private int nextIndentCount; 
 	private String codeLine;
 	
-	public PythonLine(int indentCount, int nextIndentCount, String codeLine) {
-		super();
+	public PythonLine(int indentCount, int nextIndentCount, String codeLine, String pyLine) {
+		this.pythonCodeLine = pyLine;
 		this.indentCount = indentCount;
 		this.codeLine = codeLine;
 		this.nextIndentCount = nextIndentCount;
+	}
+	
+	public String getPythonCodeLine() {
+		return pythonCodeLine;
+	}
+
+	public void setPythonCodeLine(String pythonCodeLine) {
+		this.pythonCodeLine = pythonCodeLine;
 	}
 
 	public int getIndentCount() {
@@ -45,6 +54,6 @@ public class PythonLine {
 		for (int i = 0; i < indentCount; i++) {
 			tabCount += "\t";
 		}
-		return tabCount + codeLine;
+		return tabCount + pythonCodeLine;
 	}
 }
