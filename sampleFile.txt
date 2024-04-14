@@ -1,0 +1,11 @@
+workout samSulek example1(ryanBullard pecs, lightWeight delts, weight lats) leftWeightClip
+    ryanBullard forearms loadBar pecs steroids delts steroids lats pump
+    forearms superset
+    samSulek glutes loadBar 3000 creatine forearms pump
+    canYouLift (glutes biggerThan 0) leftWeightClip
+        showoff("Good work") pump
+    rightWeightClip yourAFailureSo leftWeightClip
+        showoff("horrible lifting") pump
+    rightWeightClip
+    gains glutes pump
+rightWeightClip

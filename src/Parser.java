@@ -1,5 +1,8 @@
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.Scanner;
 
 public class Parser {
@@ -39,22 +42,69 @@ public class Parser {
 	private static ScopeTracker scopeTracker = new ScopeTracker();
 	private static ClipTracker clipTracker = new ClipTracker(scopeTracker);
 
+	private static boolean debugMode = true;
+	private static String fileName;
+	
 	public static void main(String[] args) throws Exception {
-		Scanner in = new Scanner(System.in);
-		System.out.print(">> ");
-		String cmd = in.nextLine();
-		while (!cmd.equals("leave gym")) {
-			cmd = cmd.trim();
-			String pythonLine = parseCmd(cmd);
-			if(pythonLine == null) throw new InvalidLineException("invalid line {" + cmd + "} blud");
-			//System.out.println(pythonLine);
-			clipTracker.addNewCodeline(cmd, pythonLine);
-			System.out.print(">> ");
-			cmd = in.nextLine();
+		addCommandLinesArgs(args);
+		if (debugMode) {
+			readLinesFromUser();
+		} else {
+			convertFileToPython("sampleFile.txt");
 		}
 		clipTracker.displayLines();
 	}
+	
+	private static void addCommandLinesArgs(String[] args) {
+		String cmdArgs = "preworkout"; 
+		for (int i = 0; i < args.length; i++) {
+			// the first command line arg is the name of the file
+			if (i == 0) {
+				debugMode = false; 
+				fileName = args[i];
+				continue;
+			}
+			String value; 
+			// check if string is an integer
+			if (args[i].matches("-?\\d+")) {
+				value = args[i];
+			} else {
+				value = "\"p" + args[i] + "\"";
+			}
+			clipTracker.addNewCodeline("", String.format("%s%d = %s", cmdArgs, i, value));
+		}
+	}
 
+	private static void convertFileToPython(String fileName) throws Exception {
+		try (BufferedReader reader = new BufferedReader(new FileReader(fileName))) {
+            String cmd;
+            while ((cmd = reader.readLine()) != null) {
+            	convertLine(cmd);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+	}
+	
+	private static void readLinesFromUser() throws Exception {
+		Scanner in = new Scanner(System.in);
+		if (debugMode) System.out.print(">> ");
+		String cmd = in.nextLine();
+		while (!cmd.equals("leave gym")) {
+			convertLine(cmd);
+			cmd = in.nextLine();
+		}
+	}
+	
+	private static void convertLine(String cmd) throws InvalidLineException, InvalidBlockException {
+		cmd = cmd.trim();
+		String pythonLine = parseCmd(cmd);
+		if(pythonLine == null) throw new InvalidLineException("invalid line {" + cmd + "} blud");
+		//if (debugMode) System.out.println(pythonLine);
+		clipTracker.addNewCodeline(cmd, pythonLine);
+		if (debugMode) System.out.print(">> ");
+	}
+	
 	private static String parseCmd(String cmd) throws InvalidBlockException {
 		String pythonLine = "";
 		try {
@@ -97,6 +147,11 @@ public class Parser {
 			return pythonLine;
 		} catch (InvalidLineException e) {
 		}
+		try {
+			pythonLine = incrExpr(cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
+		}
 		return null;
 	}
 
@@ -112,7 +167,7 @@ public class Parser {
 	private static String loopDec(String cmd) throws InvalidLineException, InvalidBlockException {
 		Matcher m = loop_dec.matcher(cmd);
 		if (m.find()) {
-			String variable = var(false, m.group(1)); // group 1 is variable name, group 2 is first bound, group 3 is
+			String variable = var(true, m.group(1)); // group 1 is variable name, group 2 is first bound, group 3 is
 														// second bound
 			String fromVal = val(m.group(2));
 			String toVal = val(m.group(3));
@@ -245,7 +300,7 @@ public class Parser {
 		} catch (InvalidLineException e) {
 		}
 		try {
-			pythonLine = incrementExpr(cmd);
+			pythonLine = incrExpr(cmd);
 			return pythonLine;
 		} catch (InvalidLineException e) {
 		}
@@ -423,9 +478,9 @@ public class Parser {
 
 	private static void printMsg(boolean match, String ntName, String cmd, String item) {
 		if (match)
-			System.out.println(ntName + ": " + cmd);
+			if (debugMode) System.out.println(ntName + ": " + cmd);
 		else
-			System.out.println("Failed to parse: {" + cmd + "} is not a valid " + item + ".");
+			if (debugMode) System.out.println("Failed to parse: {" + cmd + "} is not a valid " + item + ".");
 	}
 
 	private static String intExpr(String cmd) throws InvalidLineException, InvalidBlockException {
@@ -526,23 +581,6 @@ public class Parser {
 		printMsg(false, exprName, cmd, exprName);
 		throw new InvalidLineException();
 	}
-	
-	public static String incrementExpr(String cmd) throws InvalidLineException, InvalidBlockException {
-		Matcher m = increment.matcher(cmd);
-		if (m.find()) {
-			String leftExpr = null;
-			try {
-				leftExpr = var(false, m.group(1));
-			} catch (InvalidLineException e) {}
-			
-			if (leftExpr != null) {
-				printMsg(true, "<increment_expr>", cmd, "<increment_expr>");
-				return String.format("%s += 1",leftExpr);
-			}
-		}
-		printMsg(false, "<increment_expr>", cmd, "integer increment expression");
-		throw new InvalidLineException();
-	}
 
 	public static String ifExpr(String cmd) throws InvalidLineException, InvalidBlockException {
 		Matcher m = if_expr.matcher(cmd);
@@ -601,6 +639,23 @@ public class Parser {
 			return String.format("print(\"%s\")", value);
 		}
 		printMsg(false, "<print_expr>", cmd, "print expression");
+		throw new InvalidLineException();
+	}
+	
+	public static String incrExpr(String cmd) throws InvalidLineException, InvalidBlockException {
+		Matcher m = increment.matcher(cmd);
+		if (m.find()) {
+			String leftExpr = null;
+			try {
+				leftExpr = var(false, m.group(1));
+			} catch (InvalidLineException e) {}
+			
+			if (leftExpr != null) {
+				printMsg(true, "<increment_expr>", cmd, "<increment_expr>");
+				return String.format("%s += 1",leftExpr);
+			}
+		}
+		printMsg(false, "<increment_expr>", cmd, "integer increment expression");
 		throw new InvalidLineException();
 	}
 }

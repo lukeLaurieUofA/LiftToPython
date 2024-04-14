@@ -24,13 +24,14 @@ public class ClipTracker {
 		String closing = lineMaterial.length == 0 ? "" : lineMaterial[lineMaterial.length - 1];
 		String opening = lineMaterial.length == 0 ? "" : lineMaterial[0];
 		
-		if (closing.equals("leftWeightClip")) {
-			nextIndentAmount = indentAmount + 1;
-			scopeTracker.insertNewBlock();
-		} else if(opening.equals("rightWeightClip")) {
+		if(opening.equals("rightWeightClip")) {
 			indentAmount = indentAmount - 1;
 			nextIndentAmount = indentAmount;
 			scopeTracker.endBlock();
+		} 
+		if (closing.equals("leftWeightClip")) {
+			nextIndentAmount = indentAmount + 1;
+			scopeTracker.insertNewBlock();
 		}
 		
 		// generate the next indented python line
@@ -40,14 +41,13 @@ public class ClipTracker {
 	}
 
 	public void displayLines() throws Exception {
-		System.out.println("displaying lines now:");
 		while (!codeIndentation.isEmpty()) {
 			PythonLine pythonLine = codeIndentation.removeLast();
 			// check that there are matching left and right weight clips
 			if (pythonLine.getIndentCount() < 0 || (codeIndentation.isEmpty() && pythonLine.getIndentCount() != 0)) {
 				throw new Exception("Error: file has unmatching leftWeightClip and rightWeightClip");
 			}
-			System.out.println(pythonLine);
+			if (!pythonLine.getPythonCodeLine().equals("")) System.out.println(pythonLine);
 		}
 	}
 }
