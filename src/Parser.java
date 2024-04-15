@@ -11,11 +11,11 @@ public class Parser {
 	private static final Pattern loop_dec = Pattern.compile("^set (.+), (.+) to (.+) leftWeightClip$");
 	private static final Pattern type_var_dec = Pattern.compile("^(\\w+) (.+)$");
 	private static final Pattern type = Pattern
-			.compile("^ryanBullard$|^lightWeight$|^weight$|^cables$|^pr$|^samSulek$");
+			.compile("^ryanBullard$|^lightWeight$|^weight$|^cables$|^pr$|^samSulek$|^smallPlate$");
 	private static final Pattern var = Pattern.compile(
 			"^pecs(\\d)*$|^delts(\\d)*$|^lats(\\d)*$|^biceps(\\d)*$|^triceps(\\d)*$|^abs(\\d)*$|^obliques(\\d)*$|^quads(\\d)*$|^hamstrings(\\d)*$|^"
 					+ "glutes(\\d)*$|^calves(\\d)*$|^forearms(\\d)*$");
-	private static final Pattern int_val = Pattern.compile("^\\d+$|^-\\d+$|^-\\d+[.]\\d+$|^\\d+[.]\\d+$");
+	private static final Pattern int_val = Pattern.compile("^\\d+$|^-\\d+$|^2\\.5$");
 	private static final Pattern str_val = Pattern.compile("^\"(.*)\"$");
 	private static final Pattern bool_val = Pattern.compile("^gotItUp$|^failed$");
 	private static final Pattern end_scope = Pattern.compile("^rightWeightClip$");
@@ -69,7 +69,7 @@ public class Parser {
 			if (args[i].matches("-?\\d+")) {
 				value = args[i];
 			} else {
-				value = "\"p" + args[i] + "\"";
+				value = "\"" + args[i] + "\"";
 			}
 			clipTracker.addNewCodeline("", String.format("%s%d = %s", cmdArgs, i, value));
 		}
