@@ -38,6 +38,7 @@ public class Parser {
 
 	private static final Pattern return_expr = Pattern.compile("^gains (.+) pump$");
 	private static final Pattern print_expr = Pattern.compile("^showoff[(]\"(.*)\"[)] pump$");
+	private static final Pattern comment = Pattern.compile("^sayToGymBro(.+)$");
 
 	private static ScopeTracker scopeTracker = new ScopeTracker();
 	private static ClipTracker clipTracker = new ClipTracker(scopeTracker);
@@ -149,6 +150,11 @@ public class Parser {
 		}
 		try {
 			pythonLine = incrExpr(cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
+		}
+		try {
+			pythonLine = commentExpr(cmd);
 			return pythonLine;
 		} catch (InvalidLineException e) {
 		}
@@ -656,6 +662,17 @@ public class Parser {
 			}
 		}
 		printMsg(false, "<increment_expr>", cmd, "integer increment expression");
+		throw new InvalidLineException();
+	}
+	
+	public static String commentExpr(String cmd) throws InvalidLineException, InvalidBlockException {
+		Matcher m = comment.matcher(cmd);
+		if (m.find()) {
+			String leftExpr = m.group(1);
+			printMsg(true, "<comment>", cmd, "<comment>");
+			return String.format("#%s",leftExpr);
+		}
+		printMsg(false, "<comment>", cmd, "<comment>");
 		throw new InvalidLineException();
 	}
 }
