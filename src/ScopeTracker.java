@@ -1,19 +1,44 @@
 import java.util.ArrayList;
 
 public class ScopeTracker {
-	ArrayList<String> varTracker; 
+	ArrayList<VarInfo> varTracker;
 	
 	public ScopeTracker() {
-		varTracker = new ArrayList<String>();
+		varTracker = new ArrayList<>();
 	}
 	
-	public void addNewVar(String newVariable) {
-		varTracker.add(newVariable);
+	public void addNewVar(String newVariable, Type type) {
+		varTracker.add(new VarInfo(newVariable, type));
 	} 
 	
-	public void checkVarUsable(String varToCheck) throws InvalidBlockException {
+	public void checkVarUsable(VarInfo varToCheck) throws InvalidBlockException {
 		if (!varTracker.contains(varToCheck)) {
-			throw new InvalidBlockException("You gotta hit the gym before you can that muscle group(please define " + varToCheck + " before using)");
+			throw new InvalidBlockException("You gotta hit the gym before you can use that muscle group(please define "
+					+ varToCheck.name + " before using)");
+		}
+	}
+
+	public Type getType(String varName) {
+		Type type = Type.notImportant;
+		for (VarInfo var : varTracker) {
+			if(var == null) {
+				continue;
+			}
+			if(var.name.equals(varName)) {
+				type = var.type;
+				break;
+			}
+		}
+		return type;
+	}
+
+	public void printCurrentScopeInfo() {
+		for (VarInfo var : varTracker) {
+			if(var == null) {
+				System.out.println("Scope break");
+			} else {
+				System.out.println("Type: " + var.type + ", Name: " + var.name);
+			}
 		}
 	}
 	
@@ -26,6 +51,42 @@ public class ScopeTracker {
 		while (i >= 0 && varTracker.get(i) != null) {
 			varTracker.remove(i);
 			i--;
+		}
+		varTracker.remove(i); // Remove the scope break
+	}
+
+	public enum Type {
+		ryanBullard,
+		lightWeight,
+		weight,
+		cables,
+		pr,
+		samSulek,
+		smallPlate,
+		notImportant
+	}
+
+	public static class VarInfo {
+		String name;
+		Type type;
+
+		public VarInfo(String name, Type type) {
+			this.name = name;
+			this.type = type;
+		}
+
+		@Override
+		public boolean equals(Object var) {
+			if(var instanceof VarInfo) {
+				VarInfo varInfo = (VarInfo)var;
+				return this.name.equals(varInfo.name) && this.type == varInfo.type;
+			}
+			return false;
+		}
+
+		@Override
+		public int hashCode() {
+			return this.name.hashCode() + this.type.hashCode();
 		}
 	}
 }

@@ -3,11 +3,11 @@ import java.util.Deque;
 import java.util.Stack;
 
 public class ClipTracker {
-	private Deque<PythonLine> codeIndentation;
-	private ScopeTracker scopeTracker;
+	private final Deque<PythonLine> codeIndentation;
+	private final ScopeTracker scopeTracker;
 	
 	public ClipTracker(ScopeTracker scopeTracker) {
-		codeIndentation = new ArrayDeque();
+		codeIndentation = new ArrayDeque<>();
 		this.scopeTracker = scopeTracker;
 	}
 
@@ -31,7 +31,6 @@ public class ClipTracker {
 		} 
 		if (closing.equals("leftWeightClip")) {
 			nextIndentAmount = indentAmount + 1;
-			scopeTracker.insertNewBlock();
 		}
 		
 		// generate the next indented python line
@@ -47,7 +46,7 @@ public class ClipTracker {
 			if (pythonLine.getIndentCount() < 0 || (codeIndentation.isEmpty() && pythonLine.getIndentCount() != 0)) {
 				throw new Exception("Error: file has unmatching leftWeightClip and rightWeightClip");
 			}
-			if (!pythonLine.getPythonCodeLine().equals("")) System.out.println(pythonLine);
+			if (!pythonLine.getPythonCodeLine().isEmpty()) System.out.println(pythonLine);
 		}
 	}
 }

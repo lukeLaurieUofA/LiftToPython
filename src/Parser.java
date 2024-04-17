@@ -37,11 +37,11 @@ public class Parser {
 	private static final Pattern else_expr = Pattern.compile("^rightWeightClip yourAFailureSo leftWeightClip$");
 
 	private static final Pattern return_expr = Pattern.compile("^gains (.+) pump$");
-	private static final Pattern print_expr = Pattern.compile("^showoff[(]\"(.*)\"[)] pump$");
+	private static final Pattern print_expr = Pattern.compile("^showoff[(](.*)[)] pump$");
 	private static final Pattern comment = Pattern.compile("^sayToGymBro(.+)$");
 
-	private static ScopeTracker scopeTracker = new ScopeTracker();
-	private static ClipTracker clipTracker = new ClipTracker(scopeTracker);
+	private static final ScopeTracker scopeTracker = new ScopeTracker();
+	private static final ClipTracker clipTracker = new ClipTracker(scopeTracker);
 
 	private static boolean debugMode = true;
 	private static String fileName;
@@ -103,11 +103,12 @@ public class Parser {
 		if(pythonLine == null) throw new InvalidLineException("invalid line {" + cmd + "} blud");
 		//if (debugMode) System.out.println(pythonLine);
 		clipTracker.addNewCodeline(cmd, pythonLine);
+		scopeTracker.printCurrentScopeInfo();
 		if (debugMode) System.out.print(">> ");
 	}
 	
 	private static String parseCmd(String cmd) throws InvalidBlockException {
-		String pythonLine = "";
+		String pythonLine;
 		try {
 			pythonLine = varAssign(cmd);
 			return pythonLine;
@@ -173,7 +174,7 @@ public class Parser {
 	private static String loopDec(String cmd) throws InvalidLineException, InvalidBlockException {
 		Matcher m = loop_dec.matcher(cmd);
 		if (m.find()) {
-			String variable = var(true, m.group(1)); // group 1 is variable name, group 2 is first bound, group 3 is
+			String variable = var(true, m.group(1), "weight"); // group 1 is variable name, group 2 is first bound, group 3 is
 														// second bound
 			String fromVal = val(m.group(2));
 			String toVal = val(m.group(3));
@@ -188,6 +189,7 @@ public class Parser {
 	private static String funcDec(String cmd) throws InvalidLineException, InvalidBlockException {
 		Matcher m = func_dec.matcher(cmd);
 		if (m.find()) { // group 1 is the type, group 2 is the name, group 3 is the parameters
+			scopeTracker.insertNewBlock();
 			type(m.group(1)); // No need to check group two, it's always valid if found
 			String functionName = m.group(2);
 			String parameters = varDecList(m.group(3));
@@ -213,24 +215,25 @@ public class Parser {
 	private static String varDecList(String cmd) throws InvalidLineException, InvalidBlockException {
 		String[] split = cmd.split(", ");
 		boolean match = true;
-		String varDec = "";
+		StringBuilder varDec = new StringBuilder();
 		for (String s : split) {
 			String variable = varDec(s);
-			if (varDec.equals("")) varDec = variable; 
-			else varDec += ", " + variable;
+			if (varDec.isEmpty()) varDec = new StringBuilder(variable);
+			else varDec.append(", ").append(variable);
 		}
 		printMsg(match, "<var_dec_list>", cmd, "variable declaration list");
-		return varDec;
+		return varDec.toString();
 	}
 
 	private static String varDec(String cmd) throws InvalidLineException, InvalidBlockException {
 		Matcher m = type_var_dec.matcher(cmd);
-		String var = "";
+		String var;
 		if (m.find()) {
 			type(m.group(1));
-			var = var(true, m.group(2));
-		} else
-			var = var(true, cmd);
+			var = var(true, m.group(2), m.group(1));
+		} else {
+			var = var(true, cmd, null);
+		}
 		printMsg(true, "<var_dec>", cmd, "variable declaration");
 		return var;
 	}
@@ -243,38 +246,62 @@ public class Parser {
 			throw new InvalidLineException();
 	}
 
-	private static String var(boolean isNewVar, String cmd) throws InvalidBlockException, InvalidLineException {
+	private static String var(boolean isNewVar, String cmd, String type) throws InvalidBlockException, InvalidLineException {
 		Matcher m = var.matcher(cmd);
 		boolean match = m.find();
 		if (match) {
 			if (isNewVar) {
-				scopeTracker.addNewVar(cmd);
+					ScopeTracker.Type typeEnum = getType(type);
+					scopeTracker.addNewVar(cmd, typeEnum);
 			} else {
-				scopeTracker.checkVarUsable(cmd);
+				scopeTracker.checkVarUsable(new ScopeTracker.VarInfo(cmd, scopeTracker.getType(cmd)));
 			}
-		} else
+		} else {
 			throw new InvalidLineException();
-		printMsg(match, "<var>", cmd, "variable");
-		if (!match)
-			throw new InvalidLineException();
+		}
+		printMsg(true, "<var>", cmd, "variable");
 
-		return cmd;
+        return cmd;
+	}
+
+	private static ScopeTracker.Type getType(String type) throws InvalidBlockException {
+		ScopeTracker.Type typeEnum;
+		if(type == null) {
+			typeEnum = ScopeTracker.Type.notImportant;
+		}else if(type.equals("ryanBullard")) {
+			typeEnum = ScopeTracker.Type.ryanBullard;
+		} else if(type.equals("lightWeight")) {
+			typeEnum = ScopeTracker.Type.lightWeight;
+		} else if(type.equals("pr")) {
+			typeEnum = ScopeTracker.Type.pr;
+		} else if(type.equals("cables")) {
+			typeEnum = ScopeTracker.Type.cables;
+		} else if(type.equals("samSulek")) {
+			typeEnum = ScopeTracker.Type.samSulek;
+		} else if(type.equals("smallPlate")) {
+			typeEnum = ScopeTracker.Type.smallPlate;
+		} else if(type.equals("weight")) {
+			typeEnum = ScopeTracker.Type.weight;
+		} else {
+			throw new InvalidBlockException();
+		}
+		return typeEnum;
 	}
 
 	private static String valList(String cmd) throws InvalidLineException, InvalidBlockException {
 		String[] split = cmd.split(", ");
-		String valDec = "";
+		StringBuilder valDec = new StringBuilder();
 		for (String s : split) {
 			String value = val(s);
-			if (valDec.equals("")) valDec = value; 
-			else valDec += ", " + value;
+			if (valDec.isEmpty()) valDec = new StringBuilder(value);
+			else valDec.append(", ").append(value);
 		}
 		printMsg(true, "<val_list>", cmd, "value list");
-		return valDec;
+		return valDec.toString();
 	}
 
 	private static String val(String cmd) throws InvalidLineException, InvalidBlockException {
-		String pythonLine = "";
+		String pythonLine;
 		try {
 			pythonLine = intVal(cmd);
 			return pythonLine;
@@ -286,7 +313,7 @@ public class Parser {
 		} catch (InvalidLineException e) {
 		}
 		try {
-			pythonLine = var(false, cmd);
+			pythonLine = var(false, cmd, null);
 			return pythonLine;
 		} catch (InvalidLineException e) {
 		}
@@ -351,7 +378,7 @@ public class Parser {
 	}
 
 	private static String boolExpr(String cmd) throws InvalidLineException, InvalidBlockException {
-		String pythonLine = "";
+		String pythonLine;
 		try {
 			pythonLine = andExpr(cmd);
 			return pythonLine;
@@ -404,7 +431,7 @@ public class Parser {
 			}
 			if (leftExpr == null) {
 				try {
-					leftExpr = var(false, m.group(1));
+					leftExpr = var(false, m.group(1), null);
 				} catch (InvalidLineException e) {
 				}
 			}
@@ -433,7 +460,7 @@ public class Parser {
 			}
 			if (leftExpr == null) {
 				try {
-					leftExpr = var(false, m.group(1));
+					leftExpr = var(false, m.group(1), null);
 				} catch (InvalidLineException e) {
 				}
 			}
@@ -451,7 +478,7 @@ public class Parser {
 			}
 			if (rightExpr == null) {
 				try {
-					rightExpr = var(false, m.group(2));
+					rightExpr = var(false, m.group(2), null);
 				} catch (InvalidLineException e) {
 				}
 			}
@@ -484,13 +511,17 @@ public class Parser {
 
 	private static void printMsg(boolean match, String ntName, String cmd, String item) {
 		if (match)
-			if (debugMode) System.out.println(ntName + ": " + cmd);
+			if (debugMode) {
+				System.out.println(ntName + ": " + cmd);
+			}
 		else
-			if (debugMode) System.out.println("Failed to parse: {" + cmd + "} is not a valid " + item + ".");
+			if (debugMode) {
+				System.out.println("Failed to parse: {" + cmd + "} is not a valid " + item + ".");
+			}
 	}
 
 	private static String intExpr(String cmd) throws InvalidLineException, InvalidBlockException {
-		String pythonLine = "";
+		String pythonLine;
 		try {
 			pythonLine = addExpr(cmd);
 			return pythonLine;
@@ -542,6 +573,9 @@ public class Parser {
 	}
 
 	private static String someIntExpr(String cmd, Matcher m, String exprName, String symbol) throws InvalidLineException, InvalidBlockException {
+		ScopeTracker.Type leftType = ScopeTracker.Type.notImportant;
+		ScopeTracker.Type rightType = ScopeTracker.Type.notImportant;
+
 		if (m.find()) {
 			String leftExpr = null;
 			try {
@@ -550,7 +584,8 @@ public class Parser {
 			}
 			if (leftExpr == null) {
 				try {
-					leftExpr = var(false, m.group(1));
+					leftExpr = var(false, m.group(1), null);
+					leftType = scopeTracker.getType(m.group(1));
 				} catch (InvalidLineException e) {
 				}
 			}
@@ -568,7 +603,8 @@ public class Parser {
 			}
 			if (rightExpr == null) {
 				try {
-					rightExpr = var(false, m.group(2));
+					rightExpr = var(false, m.group(2), null);
+					rightType = scopeTracker.getType(m.group(2));
 				} catch (InvalidLineException e) {
 				}
 			}
@@ -580,6 +616,19 @@ public class Parser {
 			}
 
 			if (leftExpr != null && rightExpr != null) {
+				if(leftType != ScopeTracker.Type.notImportant && rightType != ScopeTracker.Type.notImportant) {
+					// Check that types cannot be coerced
+					if(leftType == ScopeTracker.Type.cables && rightType != ScopeTracker.Type.cables) {
+						System.out.println("Can't so math with a cable!");
+						throw new InvalidLineException();
+					}// else if (leftType != ScopeTracker.Type.cables && rightType == ScopeTracker.Type.cables) {
+//						System.out.println("Can't so math with a cable!");
+//						throw new InvalidLineException();
+//					} else if (leftType == ScopeTracker.Type.cables && rightType == ScopeTracker.Type.cables) {
+//						System.out.println("Can't so math with a cable!");
+//						throw new InvalidLineException();
+//					}
+				}
 				printMsg(true, exprName, cmd, exprName);
 				return String.format("%s %s %s", leftExpr, symbol, rightExpr);
 			}
@@ -598,7 +647,7 @@ public class Parser {
 			} catch (InvalidLineException e) {}
 			if (leftExpr == null) {
 				try {
-					leftExpr = var(false, m.group(1));
+					leftExpr = var(false, m.group(1), null);
 				} catch (InvalidLineException e) {}
 			}
 			if(leftExpr == null) {
@@ -608,6 +657,7 @@ public class Parser {
 			}
 			
 			if (leftExpr != null) {
+				scopeTracker.insertNewBlock();
 				printMsg(true, "<if_expr>", cmd, "if expression");
 				return String.format("if %s:",leftExpr);
 			}
@@ -622,6 +672,7 @@ public class Parser {
 			printMsg(false, "<else_expr>", cmd, "else expression");
 			throw new InvalidLineException();
 		}
+		scopeTracker.insertNewBlock();
 		printMsg(true, "<else_expr>", cmd, "else expression");
 		return "else:";
 	}
@@ -639,10 +690,23 @@ public class Parser {
 	
 	private static String printExpr(String cmd) throws InvalidLineException, InvalidBlockException {
 		Matcher m = print_expr.matcher(cmd);
+		System.out.println(cmd);
 		if (m.find()) {
+			boolean match = false;
+			try {
+				var(false, m.group(1), null);
+				match = true;
+			} catch (InvalidLineException e) {}
+			try {
+				strVal(m.group(1));
+				match = true;
+			} catch (InvalidLineException e) {}
+			if(!match) {
+				throw new InvalidLineException();
+			}
 			String value = m.group(1);
 			printMsg(true, "<print_expr>", cmd, "print expression");
-			return String.format("print(\"%s\")", value);
+			return String.format("print(%s)", value);
 		}
 		printMsg(false, "<print_expr>", cmd, "print expression");
 		throw new InvalidLineException();
@@ -653,7 +717,7 @@ public class Parser {
 		if (m.find()) {
 			String leftExpr = null;
 			try {
-				leftExpr = var(false, m.group(1));
+				leftExpr = var(false, m.group(1), null);
 			} catch (InvalidLineException e) {}
 			
 			if (leftExpr != null) {
@@ -665,7 +729,7 @@ public class Parser {
 		throw new InvalidLineException();
 	}
 	
-	public static String commentExpr(String cmd) throws InvalidLineException, InvalidBlockException {
+	public static String commentExpr(String cmd) throws InvalidLineException{
 		Matcher m = comment.matcher(cmd);
 		if (m.find()) {
 			String leftExpr = m.group(1);
