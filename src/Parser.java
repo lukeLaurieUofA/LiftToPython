@@ -103,7 +103,7 @@ public class Parser {
 		if(pythonLine == null) throw new InvalidLineException("invalid line {" + cmd + "} blud");
 		//if (debugMode) System.out.println(pythonLine);
 		clipTracker.addNewCodeline(cmd, pythonLine);
-		scopeTracker.printCurrentScopeInfo();
+		if(debugMode) scopeTracker.printCurrentScopeInfo();
 		if (debugMode) System.out.print(">> ");
 	}
 	
@@ -218,7 +218,7 @@ public class Parser {
 		StringBuilder varDec = new StringBuilder();
 		for (String s : split) {
 			String variable = varDec(s);
-			if (varDec.isEmpty()) varDec = new StringBuilder(variable);
+			if (varDec.length() == 0) varDec = new StringBuilder(variable);
 			else varDec.append(", ").append(variable);
 		}
 		printMsg(match, "<var_dec_list>", cmd, "variable declaration list");
@@ -293,7 +293,7 @@ public class Parser {
 		StringBuilder valDec = new StringBuilder();
 		for (String s : split) {
 			String value = val(s);
-			if (valDec.isEmpty()) valDec = new StringBuilder(value);
+			if (valDec.length() == 0) valDec = new StringBuilder(value);
 			else valDec.append(", ").append(value);
 		}
 		printMsg(true, "<val_list>", cmd, "value list");
@@ -690,7 +690,6 @@ public class Parser {
 	
 	private static String printExpr(String cmd) throws InvalidLineException, InvalidBlockException {
 		Matcher m = print_expr.matcher(cmd);
-		System.out.println(cmd);
 		if (m.find()) {
 			boolean match = false;
 			try {
