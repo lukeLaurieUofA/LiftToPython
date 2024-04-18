@@ -394,7 +394,6 @@ public class Parser {
 			// Group 1 is always valid if it's found, type checking will handle this later
 			if(!m.group(2).isEmpty()) {
 				for(String s : m.group(2).trim().replace(',', ' ').split("( )+")) {
-					System.out.println(s);
 					if(!var.matcher(s).find()) {
 						throw new InvalidLineException();
 					}
@@ -735,7 +734,6 @@ public class Parser {
 			// Group 1 is always valid if it's found, type checking will handle this later
 			if(!m.group(2).isEmpty()) {
 				for(String s : m.group(2).trim().replace(',', ' ').split("( )+")) {
-					System.out.println(s);
 					if(!var.matcher(s).find()) {
 						throw new InvalidLineException();
 					}
@@ -820,19 +818,6 @@ public class Parser {
 			}
 
 			if (leftExpr != null && rightExpr != null) {
-				if(leftType != ScopeTracker.Type.notImportant && rightType != ScopeTracker.Type.notImportant) {
-					// Check that types cannot be coerced
-					if(leftType == ScopeTracker.Type.cables && rightType != ScopeTracker.Type.cables) {
-						System.out.println("Can't so math with a cable!");
-						throw new InvalidLineException();
-					}// else if (leftType != ScopeTracker.Type.cables && rightType == ScopeTracker.Type.cables) {
-//						System.out.println("Can't so math with a cable!");
-//						throw new InvalidLineException();
-//					} else if (leftType == ScopeTracker.Type.cables && rightType == ScopeTracker.Type.cables) {
-//						System.out.println("Can't so math with a cable!");
-//						throw new InvalidLineException();
-//					}
-				}
 				printMsg(true, exprName, cmd, exprName);
 				return String.format("%s %s %s", leftExpr, symbol, rightExpr);
 			}
@@ -900,7 +885,6 @@ public class Parser {
 	
 	private static String printExpr(String cmd) throws InvalidLineException, InvalidBlockException {
 		Matcher m = print_expr.matcher(cmd);
-		System.out.println(cmd);
 		if (m.find()) {
 			boolean match = false;
 			try {
