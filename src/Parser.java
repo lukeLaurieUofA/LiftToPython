@@ -1,13 +1,13 @@
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.Scanner;
 
 public class Parser {
 	private static final Pattern var_assign = Pattern.compile("^(.+) loadBar (.+) pump$");
-	private static final Pattern func_dec = Pattern.compile("^workout (.+) (.+)[(](.+)[)] leftWeightClip$");
+	private static final Pattern func_dec = Pattern.compile("^workout (.+) (.+)[(](.*)[)] leftWeightClip$");
 	private static final Pattern loop_dec = Pattern.compile("^set (.+), (.+) to (.+) leftWeightClip$");
 	private static final Pattern type_var_dec = Pattern.compile("^(\\w+) (.+)$");
 	private static final Pattern type = Pattern
@@ -40,13 +40,36 @@ public class Parser {
 	private static final Pattern print_expr = Pattern.compile("^showoff[(](.*)[)] pump$");
 	private static final Pattern comment = Pattern.compile("^sayToGymBro(.+)$");
 
+	private static final Pattern function_call_standalone = Pattern.compile("^(.+)[(](.*)[)] pump$");
+	private static final Pattern function_call = Pattern.compile("^(.+)[(](.*)[)]$");
+
 	private static final ScopeTracker scopeTracker = new ScopeTracker();
 	private static final ClipTracker clipTracker = new ClipTracker(scopeTracker);
 
 	private static boolean debugMode = true;
 	private static String fileName;
-	
+	private static LastLine lastLine = LastLine.Unchecked;
+
+	private static List<ScopeTracker.Type> intTypes;
+
+	private static List<String> intOps;
+
+	private static List<String> stringOps;
+
+	private enum LastLine {
+		IfExpr,
+		VarAssign,
+		Return,
+		Unchecked
+	}
+
 	public static void main(String[] args) throws Exception {
+		intTypes = Arrays.asList(
+                ScopeTracker.Type.pr, ScopeTracker.Type.lightWeight,
+                ScopeTracker.Type.ryanBullard, ScopeTracker.Type.samSulek, ScopeTracker.Type.weight,
+                ScopeTracker.Type.smallPlate);
+		intOps = Arrays.asList("creatine", "restDay", "steroids", "vegan", "muscleMass");
+		stringOps = Arrays.asList("creatine", "steroids");
 		addCommandLinesArgs(args);
 		if (debugMode) {
 			readLinesFromUser();
@@ -78,6 +101,12 @@ public class Parser {
 
 	private static void convertFileToPython(String fileName) throws Exception {
 		try (BufferedReader reader = new BufferedReader(new FileReader(fileName))) {
+			// Read in all function definitions
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		try (BufferedReader reader = new BufferedReader(new FileReader(fileName))) {
             String cmd;
             while ((cmd = reader.readLine()) != null) {
             	convertLine(cmd);
@@ -104,13 +133,95 @@ public class Parser {
 		//if (debugMode) System.out.println(pythonLine);
 		clipTracker.addNewCodeline(cmd, pythonLine);
 		if(debugMode) scopeTracker.printCurrentScopeInfo();
+		checkTypeFromLastLine(cmd);
 		if (debugMode) System.out.print(">> ");
 	}
-	
+
+	private static void checkTypeFromLastLine(String cmd) throws InvalidLineException {
+		if(lastLine == LastLine.Return) {
+			checkReturnType(cmd);
+		} else if(lastLine == LastLine.VarAssign) {
+			checkVarAssignMatches(cmd);
+		} else if(lastLine == LastLine.IfExpr) {
+			checkBoolExpr(cmd);
+		}
+	}
+
+	private static void checkBoolExpr(String cmd) {
+	}
+
+	private static void checkVarAssignMatches(String cmd) {
+	}
+
+	private static void checkReturnType(String cmd) throws InvalidLineException {
+		ScopeTracker.Type returnType = scopeTracker.getReturnType();
+		String expr = cmd.substring(6, cmd.length() - 5);
+		String[] tokens = expr.split(" ");
+		if(intTypes.contains(returnType)) { // Int checking logic, all are int types, uses any int op
+			for(int i = 0; i < tokens.length; i++) {
+				String token = tokens[i];
+				if(intOps.contains(token)) {
+					continue;
+				}
+				if(!var.matcher(token).matches()) { // This is not a variable name, or a valid op.
+					try {
+						String val = intVal(token);
+					} catch (InvalidLineException e) {
+						System.out.println("What even is this? This needs to be an int literal bro: " + token);
+						throw new InvalidLineException();
+					}
+				}
+			}
+		} else if(returnType == ScopeTracker.Type.cables) { // String checking logic, first token must be a string, only uses mult or add
+			for(int i = 0; i < tokens.length; i++) {
+				String token = tokens[i];
+				if(i == 0) { // Need to begin with a string, so we can safely concatenate.
+					ScopeTracker.Type type = scopeTracker.getType(token);
+					if(type != null && scopeTracker.getType(token) != ScopeTracker.Type.cables) {
+						System.out.println("Need to begin with a string to type coerce!");
+						throw new InvalidLineException();
+					}
+					if(type == null) {
+						try {
+							String val = strVal(token);
+						} catch (InvalidLineException e) {
+							throw new InvalidLineException();
+						}
+					}
+				} else if(!var.matcher(token).matches() && !stringOps.contains(token)) { // This is not a variable name, or a valid op.
+					try {
+						String val = strVal(token);
+					} catch (InvalidLineException e) {
+						System.out.println("Invalid string operation \"" + token + "\"!");
+						throw new InvalidLineException();
+					}
+				}
+			}
+		}
+	}
+
+	private static ScopeTracker.Type compatibleTypes(ScopeTracker.Type type, ScopeTracker.Type secondType, String op) throws InvalidLineException {
+		if(type == ScopeTracker.Type.notImportant) {
+			return type;
+		}
+		if(secondType == ScopeTracker.Type.notImportant) {
+			return secondType;
+		}
+		if(intTypes.contains(type) && intTypes.contains(secondType) && intOps.contains(op)) {
+			return ScopeTracker.Type.samSulek;
+		}
+		if(type == ScopeTracker.Type.cables && (op.equals("creatine") || op.equals("steroids"))) {
+			return ScopeTracker.Type.cables;
+		} else {
+			throw new InvalidLineException();
+		}
+	}
+
 	private static String parseCmd(String cmd) throws InvalidBlockException {
 		String pythonLine;
 		try {
 			pythonLine = varAssign(cmd);
+			lastLine = LastLine.VarAssign;
 			return pythonLine;
 		} catch (InvalidLineException e) {
 		}
@@ -131,6 +242,7 @@ public class Parser {
 		}
 		try {
 			pythonLine = ifExpr(cmd);
+			lastLine = LastLine.IfExpr;
 			return pythonLine;
 		} catch (InvalidLineException e) {
 		}
@@ -141,6 +253,7 @@ public class Parser {
 		}
 		try {
 			pythonLine = returnExpr(cmd);
+			lastLine = LastLine.Return;
 			return pythonLine;
 		} catch (InvalidLineException e) {
 		}
@@ -156,6 +269,11 @@ public class Parser {
 		}
 		try {
 			pythonLine = commentExpr(cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {
+		}
+		try {
+			pythonLine = funcCallExpr(cmd);
 			return pythonLine;
 		} catch (InvalidLineException e) {
 		}
@@ -191,8 +309,12 @@ public class Parser {
 		if (m.find()) { // group 1 is the type, group 2 is the name, group 3 is the parameters
 			scopeTracker.insertNewBlock();
 			type(m.group(1)); // No need to check group two, it's always valid if found
+			scopeTracker.setReturnType(getType(m.group(1)));
 			String functionName = m.group(2);
-			String parameters = varDecList(m.group(3));
+			String parameters = "";
+			if(!m.group(3).equals("")) {
+				 parameters = varDecList(m.group(3));
+			}
 			printMsg(true, "\n<func_dec>", cmd, "function declaration");
 			return String.format("def %s(%s):", functionName, parameters);
 		}
@@ -218,7 +340,7 @@ public class Parser {
 		StringBuilder varDec = new StringBuilder();
 		for (String s : split) {
 			String variable = varDec(s);
-			if (varDec.length() == 0) varDec = new StringBuilder(variable);
+			if (varDec.isEmpty()) varDec = new StringBuilder(variable);
 			else varDec.append(", ").append(variable);
 		}
 		printMsg(match, "<var_dec_list>", cmd, "variable declaration list");
@@ -264,6 +386,27 @@ public class Parser {
         return cmd;
 	}
 
+	private static String funcCallExpr(String cmd) throws InvalidLineException {
+		Matcher m = function_call_standalone.matcher(cmd);
+		boolean match = m.find();
+		String parameters = "";
+		if(match) {
+			// Group 1 is always valid if it's found, type checking will handle this later
+			if(!m.group(2).isEmpty()) {
+				for(String s : m.group(2).trim().replace(',', ' ').split("( )+")) {
+					System.out.println(s);
+					if(!var.matcher(s).find()) {
+						throw new InvalidLineException();
+					}
+				}
+			}
+		}
+		printMsg(match, "<func_call>", cmd, "function call");
+		if (!match)
+			throw new InvalidLineException();
+		return m.group(1) + "(" + parameters + ")"; // Converted call to python
+	}
+
 	private static ScopeTracker.Type getType(String type) throws InvalidBlockException {
 		ScopeTracker.Type typeEnum;
 		if(type == null) {
@@ -293,7 +436,7 @@ public class Parser {
 		StringBuilder valDec = new StringBuilder();
 		for (String s : split) {
 			String value = val(s);
-			if (valDec.length() == 0) valDec = new StringBuilder(value);
+			if (valDec.isEmpty()) valDec = new StringBuilder(value);
 			else valDec.append(", ").append(value);
 		}
 		printMsg(true, "<val_list>", cmd, "value list");
@@ -470,6 +613,12 @@ public class Parser {
 				} catch (InvalidLineException e) {
 				}
 			}
+			if (leftExpr == null) {
+				try {
+					leftExpr = functionCall(m.group(1));
+				} catch (InvalidLineException e) {
+				}
+			}
 
 			String rightExpr = null;
 			try {
@@ -485,6 +634,12 @@ public class Parser {
 			if (rightExpr == null) {
 				try {
 					rightExpr = boolExpr(m.group(2));
+				} catch (InvalidLineException e) {
+				}
+			}
+			if (rightExpr == null) {
+				try {
+					rightExpr = functionCall(m.group(2));
 				} catch (InvalidLineException e) {
 				}
 			}
@@ -572,6 +727,27 @@ public class Parser {
 		return someIntExpr(cmd, mod_expr.matcher(cmd), "<mod_expr>", "%");
 	}
 
+	private static String functionCall(String cmd) throws InvalidLineException {
+		Matcher m = function_call.matcher(cmd);
+		boolean match = m.find();
+		String parameters = "";
+		if(match) {
+			// Group 1 is always valid if it's found, type checking will handle this later
+			if(!m.group(2).isEmpty()) {
+				for(String s : m.group(2).trim().replace(',', ' ').split("( )+")) {
+					System.out.println(s);
+					if(!var.matcher(s).find()) {
+						throw new InvalidLineException();
+					}
+				}
+			}
+		}
+		printMsg(match, "<func_call>", cmd, "function call");
+		if (!match)
+			throw new InvalidLineException();
+		return m.group(1) + "(" + parameters + ")"; // Converted call to python
+	}
+
 	private static String someIntExpr(String cmd, Matcher m, String exprName, String symbol) throws InvalidLineException, InvalidBlockException {
 		ScopeTracker.Type leftType = ScopeTracker.Type.notImportant;
 		ScopeTracker.Type rightType = ScopeTracker.Type.notImportant;
@@ -596,6 +772,20 @@ public class Parser {
 				}
 			}
 
+			if (leftExpr == null) {
+				try {
+					leftExpr = strVal(m.group(1));
+				} catch (InvalidLineException e) {
+				}
+			}
+
+			if (leftExpr == null) {
+				try {
+					leftExpr = functionCall(m.group(1));
+				} catch (InvalidLineException e) {
+				}
+			}
+
 			String rightExpr = null;
 			try {
 				rightExpr = intVal(m.group(2));
@@ -611,6 +801,20 @@ public class Parser {
 			if (rightExpr == null) {
 				try {
 					rightExpr = intExpr(m.group(2));
+				} catch (InvalidLineException e) {
+				}
+			}
+
+			if (rightExpr == null) {
+				try {
+					rightExpr = strVal(m.group(2));
+				} catch (InvalidLineException e) {
+				}
+			}
+
+			if (rightExpr == null) {
+				try {
+					rightExpr = functionCall(m.group(1));
 				} catch (InvalidLineException e) {
 				}
 			}
@@ -655,6 +859,12 @@ public class Parser {
 					leftExpr = boolVal(m.group(1));
 				} catch (InvalidLineException e) {}
 			}
+			if (leftExpr == null) {
+				try {
+					leftExpr = functionCall(m.group(1));
+				} catch (InvalidLineException e) {
+				}
+			}
 			
 			if (leftExpr != null) {
 				scopeTracker.insertNewBlock();
@@ -690,6 +900,7 @@ public class Parser {
 	
 	private static String printExpr(String cmd) throws InvalidLineException, InvalidBlockException {
 		Matcher m = print_expr.matcher(cmd);
+		System.out.println(cmd);
 		if (m.find()) {
 			boolean match = false;
 			try {

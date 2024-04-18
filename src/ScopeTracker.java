@@ -2,9 +2,11 @@ import java.util.ArrayList;
 
 public class ScopeTracker {
 	ArrayList<VarInfo> varTracker;
+	private Type returnType;
 	
 	public ScopeTracker() {
 		varTracker = new ArrayList<>();
+		returnType = Type.notImportant;
 	}
 	
 	public void addNewVar(String newVariable, Type type) {
@@ -19,7 +21,7 @@ public class ScopeTracker {
 	}
 
 	public Type getType(String varName) {
-		Type type = Type.notImportant;
+		Type type = null;
 		for (VarInfo var : varTracker) {
 			if(var == null) {
 				continue;
@@ -30,6 +32,14 @@ public class ScopeTracker {
 			}
 		}
 		return type;
+	}
+
+	public Type getReturnType() {
+		return returnType;
+	}
+
+	public void setReturnType(Type returnType) {
+		this.returnType = returnType;
 	}
 
 	public void printCurrentScopeInfo() {
@@ -53,6 +63,15 @@ public class ScopeTracker {
 			i--;
 		}
 		varTracker.remove(i); // Remove the scope break
+		int nullCount = 0;
+		for (VarInfo var : varTracker) {
+			if(var == null) {
+				nullCount++;
+			}
+		}
+		if(nullCount == 0) {
+			returnType = Type.notImportant; // We are out of a function scope, there's no return type.
+		}
 	}
 
 	public enum Type {
