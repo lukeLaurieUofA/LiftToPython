@@ -116,6 +116,7 @@ public class Parser {
 					}
 				} catch (InvalidLineException e) {
 					System.out.println("Invalid Function Declaration: " + cmd);
+					throw new InvalidLineException();
 				}
 			}
 		} catch (IOException e) {
@@ -1151,8 +1152,12 @@ public class Parser {
 			try {
 				value = functionCall(m.group(1));
 				match = true;
-				checkFunctionCall(m.group(1));
-			} catch (InvalidLineException ignored) {}
+				try { // Make sure the call inside the print is good.
+					checkFunctionCall(m.group(1));
+				} catch (InvalidLineException e) {
+					System.exit(1);
+				}
+ 			} catch (InvalidLineException ignored) {}
 			try {
 				value = var(false, m.group(1), null);
 				match = true;
