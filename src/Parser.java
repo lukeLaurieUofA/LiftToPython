@@ -274,7 +274,7 @@ public class Parser {
 							throw new InvalidLineException();
 						}
 					} else if(scopeTracker.getType(token) != ScopeTracker.Type.bool && !bool_val.matcher(token).find()
-							|| !boolOps.contains(token)) {
+							&& !boolOps.contains(token)) {
 						System.out.println("Invalid boolean operation on line " + lineNumber);
 					}
 				}
