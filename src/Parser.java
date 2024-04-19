@@ -461,7 +461,7 @@ public class Parser {
 
 	private static String parseCmd(String cmd) throws InvalidBlockException {
 		if(cmd.isEmpty()) {
-			return "\n";
+			return " ";
 		}
 		String pythonLine;
 		try {
@@ -642,10 +642,19 @@ public class Parser {
 		if(match) {
 			// Group 1 is always valid if it's found, type checking will handle this later
 			if(!m.group(2).isEmpty()) {
-				for(String s : m.group(2).trim().replace(',', ' ').split("( )+")) {
-					if(!var.matcher(s).find() && val(s) == null) {
+				int paramNum = 0;
+				for(String s : m.group(2).trim().split(",")) {
+					if(var.matcher(s).find()) {
+						parameters += s;
+					} else if (val(s) != null) {
+						parameters += val(s);
+					} else {
 						throw new InvalidLineException();
 					}
+					if(paramNum != (m.group(2).trim().split(",").length - 1)) {
+						parameters += ",";
+					}
+					paramNum++;
 				}
 			}
 		}
@@ -773,7 +782,17 @@ public class Parser {
 	}
 
 	private static String boolVal(String cmd) throws InvalidLineException {
-		return someVal(bool_val.matcher(cmd), cmd, "<bool>");
+		Matcher m = bool_val.matcher(cmd);
+		if (m.find()) {
+			printMsg(true, "<bool>", cmd, "<bool>");
+			if(cmd.equals("gotItUp"))
+			{
+				return "True";
+			}	
+			return "False";
+		}
+		printMsg(false, "<bool>", cmd, "<bool>");
+		throw new InvalidLineException();
 	}
 
 	private static String intVal(String cmd) throws InvalidLineException {
@@ -1021,20 +1040,19 @@ public class Parser {
 		if(match) {
 			// Group 1 is always valid if it's found, type checking will handle this later
 			if(!m.group(2).isEmpty()) {
+				int paramNum = 0;
 				for(String s : m.group(2).trim().split(",")) {
 					if(var.matcher(s).find()) {
 						parameters += s;
 					} else if (val(s) != null) {
-						if(val(s).equals("gotItUp")) {
-							System.out.println("huh");
-						}
 						parameters += val(s);
 					} else {
 						throw new InvalidLineException();
 					}
-					if(!s.equals(m.group(2).trim().split(",")[m.group(2).trim().split(",").length - 1])) {
+					if(paramNum != (m.group(2).trim().split(",").length - 1)) {
 						parameters += ",";
 					}
+					paramNum++;
 				}
 			}
 		}
@@ -1181,23 +1199,23 @@ public class Parser {
 	private static String printExpr(String cmd) throws InvalidLineException, InvalidBlockException {
 		Matcher m = print_expr.matcher(cmd);
 		if (m.find()) {
+			String value = "";
 			boolean match = false;
 			try {
-				var(false, m.group(1), null);
+				value = functionCall(m.group(1));
 				match = true;
 			} catch (InvalidLineException e) {}
 			try {
-				strVal(m.group(1));
+				value = var(false, m.group(1), null);
 				match = true;
 			} catch (InvalidLineException e) {}
 			try {
-				functionCall(m.group(1));
+				value = val(m.group(1));
 				match = true;
 			} catch (InvalidLineException e) {}
 			if(!match) {
 				throw new InvalidLineException();
 			}
-			String value = m.group(1);
 			printMsg(true, "<print_expr>", cmd, "print expression");
 			return String.format("print(%s)", value);
 		}
