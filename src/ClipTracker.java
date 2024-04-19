@@ -27,7 +27,6 @@ public class ClipTracker {
 		if(opening.equals("rightWeightClip")) {
 			indentAmount = indentAmount - 1;
 			nextIndentAmount = indentAmount;
-			scopeTracker.endBlock();
 		} 
 		if (closing.equals("leftWeightClip")) {
 			nextIndentAmount = indentAmount + 1;

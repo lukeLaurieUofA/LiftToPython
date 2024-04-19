@@ -61,7 +61,8 @@ public class ScopeTracker {
 
 	public Type getType(String varName) {
 		Type type = null;
-		for (VarInfo var : varTracker) {
+		for (int i = varTracker.size() - 1; i >= 0; i--) {
+			VarInfo var = varTracker.get(i);
 			if(var == null) {
 				continue;
 			}
