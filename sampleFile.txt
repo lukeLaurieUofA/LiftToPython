@@ -1,11 +1,80 @@
-workout samSulek example1(ryanBullard pecs, lightWeight delts, weight lats) leftWeightClip
-    ryanBullard forearms loadBar pecs steroids delts steroids lats pump
-    forearms superset
-    samSulek glutes loadBar 3000 creatine forearms pump
-    canYouLift (glutes biggerThan 0) leftWeightClip
-        showoff("Good work") pump
-    rightWeightClip yourAFailureSo leftWeightClip
-        showoff("horrible lifting") pump
-    rightWeightClip
-    gains glutes pump
+workout samSulek gymSession(ryanBullard pecs, lightWeight delts, weight lats) leftWeightClip
+	ryanBullard forearms loadBar pecs steroids delts steroids lats vegan 2 pump
+	samSulek glutes loadBar 3003 restDay 50 creatine forearms pump
+	glutes superSet pump
+	lightWeight lats123 loadBar glutes muscleMass 2 pump
+
+	pr obliques loadBar 10000 pump
+	smallPlate quads loadBar 2.5 pump
+
+	set quads, 1 to 5 leftWeightClip
+		glutes loadBar glutes creatine quads pump
+	rightWeightClip
+
+	glutes loadBar 2869 creatine 4100 pump
+
+	sayToGymBro reasignment also works with setting a new variable
+
+	canYouLift (2850 smallerThan glutes) leftWeightClip
+		showOff(gotItUp) pump
+	rightWeightClip
+
+	canYouLift (glutes biggerThan 200) leftWeightClip
+		showoff("Good work") pump
+	rightWeightClip yourAFailureSo leftWeightClip
+		showoff("horrible lifting") pump
+	rightWeightClip
+
+	gains glutes pump
 rightWeightClip
+
+samSulek hamstrings loadBar gymSession(-1,1,200) pump
+sayToGymBro line 1: forearms =-1 * 1 * 200 / 2 = -100
+sayToGymBro line 2: glutes = 3003 - 50 + (-100) = 2853
+sayToGymBro line 3: glutes++ = 2854
+sayToGymBro line 4: pecs123 = 2854 % 2 = 0
+sayToGymBro loop: 2851 + 1 + 2 + 3 + 4 + 5= 2869
+sayToGymBro afterloop: 2869 + 4100 = 6969
+
+showOff(hamstrings) pump
+sayToGymBro this should print good work and return 6969
+
+
+workout cables workoutPlan() leftWeightClip
+	cables delts loadBar "repeat" pump
+	delts loadBar delts steroids 3 pump
+	delts loadBar delts creatine 1 pump
+
+	cables abs loadBar "100 situps" pump
+	cables pecs loadBar abs creatine "100 pushups, " pump
+	cables quads loadBar pecs creatine "100 squats, " pump
+	cables calves loadBar quads creatine "and 10 km run a day" pump
+
+	cables biceps loadBar "saitama" pump
+
+	canYouLift (calves sameSize "100 situps, 100 pushups, 100 squats, and a 10 km run a day") leftWeightClip
+		gains "saitama"
+	rightWeightClip
+
+	gains "not " creatine biceps pump
+rightWeightClip
+
+cables biceps2 loadBar workoutPlan() pump
+
+showOff(biceps2) pump
+sayToGymBro this should print saitama
+
+workout tryBench isA200Bencher(tryBench pecs, tryBench triceps) leftWeightClip
+	tryBench biceps loadBar failed pump
+	canYouLift (pecs crushed triceps settle biceps) leftWeightClip
+		gains gotItUp pump
+	rightWeightClip
+	
+	gains spotter gotItUp pump	
+rightWeightClip
+
+showOff(tryBench(gotItUp,gotItUp)) pump
+sayToGymBro should be true
+
+showOff(tryBench(failed,gotItUp)) pump
+sayToGymBro should be false

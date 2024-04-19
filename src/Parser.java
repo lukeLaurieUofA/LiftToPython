@@ -367,7 +367,7 @@ public class Parser {
 				try {
 					intVal(token);
 				} catch (InvalidLineException e) {
-					System.out.println("Invalid string operation \"" + token + "\"!");
+					System.out.println("Invalid string operation \"" + token + "\" on line " + lineNumber);
 					throw new InvalidLineException();
 				}
 			}
@@ -559,7 +559,7 @@ public class Parser {
 		StringBuilder varDec = new StringBuilder();
 		for (String s : split) {
 			String variable = varDec(s);
-			if (varDec.isEmpty()) varDec = new StringBuilder(variable);
+			if (varDec.length() == 0) varDec = new StringBuilder(variable);
 			else varDec.append(", ").append(variable);
 		}
 		printMsg(match, "<var_dec_list>", cmd, "variable declaration list");
@@ -656,7 +656,7 @@ public class Parser {
 		StringBuilder valDec = new StringBuilder();
 		for (String s : split) {
 			String value = val(s);
-			if (valDec.isEmpty()) valDec = new StringBuilder(value);
+			if (valDec.length() == 0) valDec = new StringBuilder(value);
 			else valDec.append(", ").append(value);
 		}
 		printMsg(true, "<val_list>", cmd, "value list");

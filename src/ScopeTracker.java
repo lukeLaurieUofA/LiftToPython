@@ -172,7 +172,8 @@ public class ScopeTracker {
 
 		@Override
 		public boolean equals(Object var) {
-			if(var instanceof FuncInfo funcInfo) {
+			if(var instanceof FuncInfo) {
+				FuncInfo funcInfo = (FuncInfo)var;
                 return this.name.equals(funcInfo.name) && this.returnType == funcInfo.returnType && this.params.equals(funcInfo.params);
 			}
 			return false;
