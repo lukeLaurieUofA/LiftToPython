@@ -53,8 +53,10 @@ public class Parser {
 	private static List<ScopeTracker.Type> intTypes;
 
 	private static List<String> intOps;
+	private static List<String> intComps;
 
 	private static List<String> stringOps;
+	private static List<String> boolOps;
 
 	private static int lineNumber = 1;
 
@@ -71,7 +73,9 @@ public class Parser {
                 ScopeTracker.Type.ryanBullard, ScopeTracker.Type.samSulek, ScopeTracker.Type.weight,
                 ScopeTracker.Type.smallPlate);
 		intOps = Arrays.asList("creatine", "restDay", "steroids", "vegan", "muscleMass");
+		intComps = Arrays.asList("biggerThan", "sameSize", "smallerThan");
 		stringOps = Arrays.asList("creatine", "steroids");
+		boolOps = Arrays.asList("spotter", "crushed", "settle", "sameSize");
 		addCommandLinesArgs(args);
 		if (debugMode) {
 			readLinesFromUser();
@@ -183,15 +187,96 @@ public class Parser {
 		lastLine = LastLine.Unchecked;
 	}
 
-	private static void checkBoolExpr(String cmd) {
+	private static void checkBoolExpr(String cmd) throws InvalidLineException {
 		String expr = cmd.substring("canYouLift(".length() + 1, cmd.length() - (") leftWeightClip".length()));
 		System.out.println(expr);
 		String[] tokens = expr.split(" ");
 		if(tokens.length == 1) {
+			Matcher m = function_call.matcher(tokens[0]);
 			if(var.matcher(tokens[0]).find()) {
 				if(scopeTracker.getType(tokens[0]) != ScopeTracker.Type.bool) {
 					System.out.println("Invalid type on line " + lineNumber + ", got " + scopeTracker.getType(tokens[0])
 					+ ", expected boolean!");
+					throw new InvalidLineException();
+				}
+			} else if(m.find()) {
+				if(scopeTracker.getReturnType(m.group(2)) != ScopeTracker.Type.bool) {
+					System.out.println("Invalid type from function on line " + lineNumber +"! Expected boolean!");
+					throw new InvalidLineException();
+				}
+			}
+		} else {
+			// Only allow non-compound int comparisons.
+			if(tokens.length == 3) {
+				// Only allow string equals string when a string is involved
+				if ((scopeTracker.getType(tokens[0]) == ScopeTracker.Type.cables) && str_val.matcher(tokens[0]).find()) {
+					if (!tokens[1].equals("sameSize")) {
+						throw new InvalidLineException();
+					}
+					if ((scopeTracker.getType(tokens[2]) != ScopeTracker.Type.cables) && str_val.matcher(tokens[2]).find()) {
+						throw new InvalidLineException();
+					}
+				}
+				// Int logic
+				if ((intTypes.contains(scopeTracker.getType(tokens[0])) && (int_val.matcher(tokens[0]).find()))) {
+					if(!intComps.contains(tokens[1])) {
+						throw new InvalidLineException();
+					}
+					if(!intTypes.contains(scopeTracker.getType(tokens[2])) && !int_val.matcher(tokens[2]).find()) {
+						throw new InvalidLineException();
+					}
+				}
+				// Function call logic
+				Matcher m = function_call.matcher(tokens[0]);
+				if(m.find()) {
+					if(scopeTracker.getReturnType(m.group(1)) == ScopeTracker.Type.bool) {
+						if(!tokens[1].equals("sameSize")) {
+							System.out.println("Invalid int comparison operation on line " + lineNumber);
+							throw new InvalidLineException();
+						}
+						Matcher m2 = function_call.matcher(tokens[2]);
+						if(m2.find()) {
+							if(scopeTracker.getReturnType(m2.group(1)) != ScopeTracker.Type.cables) {
+								System.out.println("Invalid return type on line " + lineNumber);
+								throw new InvalidLineException();
+							}
+						} else {
+							if ((scopeTracker.getType(tokens[2]) != ScopeTracker.Type.cables) && !str_val.matcher(tokens[2]).find()) {
+								System.out.println("Error on line" + lineNumber + "Cannot compare a string to this: " + tokens[2]);
+								throw new InvalidLineException();
+							}
+						}
+					} else if(intTypes.contains(scopeTracker.getReturnType(m.group(1)))) {
+						if(!intComps.contains(tokens[1])) {
+							System.out.println("Invalid int comparison operation on line " + lineNumber);
+							throw new InvalidLineException();
+						}
+						Matcher m2 = function_call.matcher(tokens[2]);
+						if(m2.find()) {
+							if(!intTypes.contains(scopeTracker.getReturnType(m2.group(1)))) {
+								System.out.println("Invalid return type on line " + lineNumber);
+								throw new InvalidLineException();
+							}
+						} else {
+							if (!intTypes.contains(scopeTracker.getType(tokens[2])) && !int_val.matcher(tokens[2]).find()) {
+								System.out.println("Error on line" + lineNumber + "Cannot compare an int to this: " + tokens[2]);
+								throw new InvalidLineException();
+							}
+						}
+					}
+				}
+			} else {
+				for(String token : tokens) {
+					Matcher m = function_call.matcher(token);
+					if(m.find()) {
+						if(scopeTracker.getReturnType(m.group(1)) != ScopeTracker.Type.bool) {
+							System.out.println("Invalid type from function on line " + lineNumber + "! Expected boolean!");
+							throw new InvalidLineException();
+						}
+					} else if(scopeTracker.getType(token) != ScopeTracker.Type.bool && !bool_val.matcher(token).find()
+							|| !boolOps.contains(token)) {
+						System.out.println("Invalid boolean operation on line " + lineNumber);
+					}
 				}
 			}
 		}
@@ -206,7 +291,7 @@ public class Parser {
 			assignedType = ScopeTracker.Type.notImportant;
 		}
 		if(assignedType == ScopeTracker.Type.notImportant) {
-			assignedType = scopeTracker.getType(splitLine[0].split(" ")[0]);
+			assignedType = scopeTracker.getType(splitLine[0].split(" ")[0]); // Try to recover type for reassignment
 		}
 		if(assignedType == ScopeTracker.Type.notImportant) {
 			return;
