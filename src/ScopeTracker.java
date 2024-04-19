@@ -15,6 +15,9 @@ public class ScopeTracker {
 		if(type == Type.notImportant) { // Reassignment?
 			boolean exists = false;
 			for(VarInfo varInfo : varTracker) {
+				if(varInfo == null) {
+					continue;
+				}
                 if (varInfo.name.equals(newVariable)) {
                     exists = true;
                     break;

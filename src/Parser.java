@@ -32,7 +32,7 @@ public class Parser {
 	private static final Pattern greater_than = Pattern.compile("^(.+) biggerThan (.+)$");
 	private static final Pattern less_than = Pattern.compile("^(.+) smallerThan (.+)$");
 	private static final Pattern equal_to = Pattern.compile("^(.+) sameSize (.+)$");
-	private static final Pattern increment = Pattern.compile("^(.+) superset$");
+	private static final Pattern increment = Pattern.compile("^(.+) superSet pump$");
 	private static final Pattern if_expr = Pattern.compile("^canYouLift [(](.+)[)] leftWeightClip$");
 	private static final Pattern else_expr = Pattern.compile("^rightWeightClip yourAFailureSo leftWeightClip$");
 
@@ -206,7 +206,7 @@ public class Parser {
 			assignedType = ScopeTracker.Type.notImportant;
 		}
 		if(assignedType == ScopeTracker.Type.notImportant) {
-			assignedType = scopeTracker.getType(splitLine[0].split(" ")[1]);
+			assignedType = scopeTracker.getType(splitLine[0].split(" ")[0]);
 		}
 		if(assignedType == ScopeTracker.Type.notImportant) {
 			return;
