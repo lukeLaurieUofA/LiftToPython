@@ -74,7 +74,7 @@ public class Parser {
 		if (debugMode) {
 			readLinesFromUser();
 		} else {
-			convertFileToPython("sampleFile.txt");
+			convertFileToPython(fileName);
 		}
 		clipTracker.displayLines();
 	}
@@ -101,7 +101,15 @@ public class Parser {
 
 	private static void convertFileToPython(String fileName) throws Exception {
 		try (BufferedReader reader = new BufferedReader(new FileReader(fileName))) {
-			// Read in all function definitions
+			String cmd;
+			while((cmd = reader.readLine()) != null) {
+				try {
+					funcDec(cmd);
+					addFunction(cmd);
+				} catch (InvalidLineException e) {
+
+				}
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -114,6 +122,24 @@ public class Parser {
         } catch (IOException e) {
             e.printStackTrace();
         }
+	}
+
+	private static void addFunction(String cmd) throws InvalidBlockException {
+		Matcher matcher = func_dec.matcher(cmd);
+		boolean match = matcher.find();
+		if(match) {
+			ScopeTracker.Type returnType = getType(matcher.group(1));
+			String name = matcher.group(2);
+			ArrayList<ScopeTracker.Type> params = null;
+			if(!matcher.group(3).isEmpty()) {
+				params = new ArrayList<>();
+				for(String paramBlock : matcher.group(3).split(",")) {
+					String[] paramInfo = paramBlock.trim().split(" ");
+					params.add(getType(paramInfo[0]));
+				}
+			}
+			scopeTracker.addNewFunc(name, returnType, params);
+		}
 	}
 	
 	private static void readLinesFromUser() throws Exception {
@@ -145,58 +171,100 @@ public class Parser {
 		} else if(lastLine == LastLine.IfExpr) {
 			checkBoolExpr(cmd);
 		}
+		lastLine = LastLine.Unchecked;
 	}
 
 	private static void checkBoolExpr(String cmd) {
 	}
 
-	private static void checkVarAssignMatches(String cmd) {
+	private static void checkVarAssignMatches(String cmd) throws InvalidLineException {
+		String[] splitLine = cmd.substring(0, cmd.length() - 5).split("loadBar");
+		ScopeTracker.Type assignedType;
+		try {
+			assignedType = getType(splitLine[0].split(" ")[0]);
+		} catch (InvalidBlockException e) {
+			assignedType = ScopeTracker.Type.notImportant;
+		}
+		if(assignedType == ScopeTracker.Type.notImportant) {
+			assignedType = scopeTracker.getType(splitLine[0].split(" ")[1]);
+		}
+		if(assignedType == ScopeTracker.Type.notImportant) {
+			return;
+		}
+		if(assignedType == ScopeTracker.Type.cables) {
+			checkCablesValidity(splitLine[1].trim());
+		} else if(intTypes.contains(assignedType)) {
+			checkIntsValidity(splitLine[1].trim());
+		}
+	}
+
+	private static void checkCablesValidity(String cmd) throws InvalidLineException {
+		String[] tokens = cmd.split(" ");
+		for(int i = 0; i < tokens.length; i++) {
+			String token = tokens[i];
+			if(i == 0) { // Need to begin with a string, so we can safely concatenate.
+				Matcher m = function_call.matcher(token);
+				ScopeTracker.Type type = scopeTracker.getType(token);
+				if(type != null && scopeTracker.getType(token) != ScopeTracker.Type.cables) {
+					System.out.println("Need to begin with a string to type coerce!\nGot " + type.toString() + ".");
+					throw new InvalidLineException();
+				} else if(type == null) {
+					try {
+						String val = strVal(token);
+					} catch (InvalidLineException e) {}
+				} else if(m.find()) {
+					if(scopeTracker.getReturnType(m.group(1)) != ScopeTracker.Type.cables) {
+						throw new InvalidLineException();
+					}
+				} else {
+					throw new InvalidLineException();
+				}
+			} else if(!var.matcher(token).matches() && !stringOps.contains(token)) { // This is not a variable name, or a valid op.
+				try {
+                    strVal(token);
+                } catch (InvalidLineException e) {
+					System.out.println("Invalid string operation \"" + token + "\"!");
+					throw new InvalidLineException();
+				}
+			}
+		}
+	}
+
+	private static void checkIntsValidity(String cmd) throws InvalidLineException {
+		String[] tokens = cmd.split(" ");
+		for(int i = 0; i < tokens.length; i++) {
+			String token = tokens[i];
+			if(intOps.contains(token)) {
+				continue;
+			}
+			if(!var.matcher(token).matches()) { // This is not a variable name, or a valid op.
+				Matcher m = function_call.matcher(token);
+				if(m.find()) {
+					if(!intTypes.contains((scopeTracker.getReturnType(m.group(1))))) {
+						System.out.println("What even is this? This needs to be an int bro: " + token
+						+ "\nExpected integer type, got: " + scopeTracker.getReturnType(m.group(1)).toString());
+						throw new InvalidLineException();
+					}
+				} else {
+					try {
+						String val = intVal(token);
+					} catch (InvalidLineException e) {
+						System.out.println("What even is this? This needs to be an int bro: " + token
+								+ "\nExpected integer type, got: " + scopeTracker.getReturnType(m.group(1)).toString());
+						throw new InvalidLineException();
+					}
+				}
+			}
+		}
 	}
 
 	private static void checkReturnType(String cmd) throws InvalidLineException {
 		ScopeTracker.Type returnType = scopeTracker.getReturnType();
 		String expr = cmd.substring(6, cmd.length() - 5);
-		String[] tokens = expr.split(" ");
 		if(intTypes.contains(returnType)) { // Int checking logic, all are int types, uses any int op
-			for(int i = 0; i < tokens.length; i++) {
-				String token = tokens[i];
-				if(intOps.contains(token)) {
-					continue;
-				}
-				if(!var.matcher(token).matches()) { // This is not a variable name, or a valid op.
-					try {
-						String val = intVal(token);
-					} catch (InvalidLineException e) {
-						System.out.println("What even is this? This needs to be an int literal bro: " + token);
-						throw new InvalidLineException();
-					}
-				}
-			}
+			checkIntsValidity(expr);
 		} else if(returnType == ScopeTracker.Type.cables) { // String checking logic, first token must be a string, only uses mult or add
-			for(int i = 0; i < tokens.length; i++) {
-				String token = tokens[i];
-				if(i == 0) { // Need to begin with a string, so we can safely concatenate.
-					ScopeTracker.Type type = scopeTracker.getType(token);
-					if(type != null && scopeTracker.getType(token) != ScopeTracker.Type.cables) {
-						System.out.println("Need to begin with a string to type coerce!");
-						throw new InvalidLineException();
-					}
-					if(type == null) {
-						try {
-							String val = strVal(token);
-						} catch (InvalidLineException e) {
-							throw new InvalidLineException();
-						}
-					}
-				} else if(!var.matcher(token).matches() && !stringOps.contains(token)) { // This is not a variable name, or a valid op.
-					try {
-						String val = strVal(token);
-					} catch (InvalidLineException e) {
-						System.out.println("Invalid string operation \"" + token + "\"!");
-						throw new InvalidLineException();
-					}
-				}
-			}
+			checkCablesValidity(expr);
 		}
 	}
 
@@ -218,6 +286,9 @@ public class Parser {
 	}
 
 	private static String parseCmd(String cmd) throws InvalidBlockException {
+		if(cmd.isEmpty()) {
+			return "";
+		}
 		String pythonLine;
 		try {
 			pythonLine = varAssign(cmd);
@@ -227,6 +298,9 @@ public class Parser {
 		}
 		try {
 			pythonLine = funcDec(cmd);
+			if(debugMode) {
+				addFunction(cmd);
+			}
 			return pythonLine;
 		} catch (InvalidLineException e) {
 		}
@@ -312,8 +386,8 @@ public class Parser {
 			scopeTracker.setReturnType(getType(m.group(1)));
 			String functionName = m.group(2);
 			String parameters = "";
-			if(!m.group(3).equals("")) {
-				 parameters = varDecList(m.group(3));
+			if(!m.group(3).isEmpty()) {
+				parameters = varDecList(m.group(3));
 			}
 			printMsg(true, "\n<func_dec>", cmd, "function declaration");
 			return String.format("def %s(%s):", functionName, parameters);
@@ -479,6 +553,10 @@ public class Parser {
 			return pythonLine;
 		} catch (InvalidLineException e) {
 		}
+		try {
+			pythonLine = functionCall(cmd);
+			return pythonLine;
+		} catch (InvalidLineException e) {}
 
 		printMsg(false, "<val>", cmd, "value");
 		throw new InvalidLineException();
@@ -759,8 +837,7 @@ public class Parser {
 			if (leftExpr == null) {
 				try {
 					leftExpr = var(false, m.group(1), null);
-					leftType = scopeTracker.getType(m.group(1));
-				} catch (InvalidLineException e) {
+                } catch (InvalidLineException e) {
 				}
 			}
 			if (leftExpr == null) {
@@ -780,6 +857,7 @@ public class Parser {
 			if (leftExpr == null) {
 				try {
 					leftExpr = functionCall(m.group(1));
+					System.out.println(leftExpr);
 				} catch (InvalidLineException e) {
 				}
 			}
@@ -792,8 +870,7 @@ public class Parser {
 			if (rightExpr == null) {
 				try {
 					rightExpr = var(false, m.group(2), null);
-					rightType = scopeTracker.getType(m.group(2));
-				} catch (InvalidLineException e) {
+                } catch (InvalidLineException e) {
 				}
 			}
 			if (rightExpr == null) {
@@ -812,7 +889,7 @@ public class Parser {
 
 			if (rightExpr == null) {
 				try {
-					rightExpr = functionCall(m.group(1));
+					rightExpr = functionCall(m.group(2));
 				} catch (InvalidLineException e) {
 				}
 			}

@@ -3,15 +3,51 @@ import java.util.ArrayList;
 public class ScopeTracker {
 	ArrayList<VarInfo> varTracker;
 	private Type returnType;
+	private ArrayList<FuncInfo> funcs;
 	
 	public ScopeTracker() {
 		varTracker = new ArrayList<>();
+		funcs = new ArrayList<>();
 		returnType = Type.notImportant;
 	}
 	
 	public void addNewVar(String newVariable, Type type) {
+		if(type == Type.notImportant) { // Reassignment?
+			boolean exists = false;
+			for(VarInfo varInfo : varTracker) {
+                if (varInfo.name.equals(newVariable)) {
+                    exists = true;
+                    break;
+                }
+			}
+			if(exists) {
+				return;
+			}
+		}
 		varTracker.add(new VarInfo(newVariable, type));
-	} 
+	}
+
+	public void addNewFunc(String name, Type returnType, ArrayList<Type> parameterTypes) {
+		funcs.add(new FuncInfo(name, returnType, parameterTypes));
+	}
+
+	public Type getReturnType(String name) {
+		for(FuncInfo funcInfo : funcs) {
+			if(funcInfo.name.equals(name)) {
+				return funcInfo.returnType;
+			}
+		}
+		return null;
+	}
+
+	public ArrayList<Type> getArgumentTypes(String name) {
+		for(FuncInfo funcInfo : funcs) {
+			if(funcInfo.name.equals(name)) {
+				return funcInfo.params;
+			}
+		}
+		return null;
+	}
 	
 	public void checkVarUsable(VarInfo varToCheck) throws InvalidBlockException {
 		if (!varTracker.contains(varToCheck)) {
@@ -43,6 +79,16 @@ public class ScopeTracker {
 	}
 
 	public void printCurrentScopeInfo() {
+		System.out.println("Functions:");
+		for(FuncInfo funcInfo : funcs) {
+			System.out.println("Name: " + funcInfo.name + " ReturnType:  " + funcInfo.returnType);
+			if(funcInfo.params != null) {
+				System.out.println("Parameters:");
+				for (Type type : funcInfo.params) {
+					System.out.println("\t" + type.toString());
+				}
+			}
+		}
 		for (VarInfo var : varTracker) {
 			if(var == null) {
 				System.out.println("Scope break");
@@ -106,6 +152,31 @@ public class ScopeTracker {
 		@Override
 		public int hashCode() {
 			return this.name.hashCode() + this.type.hashCode();
+		}
+	}
+
+	public static class FuncInfo {
+		String name;
+		Type returnType;
+		ArrayList<Type> params;
+
+		public FuncInfo(String name, Type type, ArrayList<Type> params) {
+			this.name = name;
+			this.returnType = type;
+			this.params = params;
+		}
+
+		@Override
+		public boolean equals(Object var) {
+			if(var instanceof FuncInfo funcInfo) {
+                return this.name.equals(funcInfo.name) && this.returnType == funcInfo.returnType && this.params.equals(funcInfo.params);
+			}
+			return false;
+		}
+
+		@Override
+		public int hashCode() {
+			return this.name.hashCode() + this.returnType.hashCode() + this.params.size();
 		}
 	}
 }
