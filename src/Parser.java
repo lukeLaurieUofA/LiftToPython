@@ -1,4 +1,3 @@
-import javax.security.auth.callback.TextInputCallback;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -208,18 +207,18 @@ public class Parser {
 		} else {
 			// Only allow non-compound int comparisons.
 			for(int i = 0; i < tokens.length; i++) {
-				String token = tokens[i];
-				if(token.startsWith("\"")) {
+				StringBuilder token = new StringBuilder(tokens[i]);
+				if(token.toString().startsWith("\"")) {
 					for(int j = i + 1; j < tokens.length; j++) {
-						token += tokens[j];
-						if(token.endsWith("\"")) {
+						token.append(tokens[j]);
+						if(token.toString().endsWith("\"")) {
 							tokens[j] = "";
 							ArrayList<String >tokensTemp = new ArrayList<>();
-							for(int k = 0; k < tokens.length; k++) {
-								if(!tokens[k].trim().isEmpty()) {
-									tokensTemp.add(tokens[k]);
-								}
-							}
+                            for (String s : tokens) {
+                                if (!s.trim().isEmpty()) {
+                                    tokensTemp.add(s);
+                                }
+                            }
 							tokens = tokensTemp.toArray(new String[0]);
 							break;
 						}
@@ -369,13 +368,13 @@ public class Parser {
 	private static void checkCablesValidity(String cmd) throws InvalidLineException {
 		String[] tokens = cmd.split(" ");
 		for(int i = 0; i < tokens.length; i++) {
-			String token = tokens[i];
-			if (token.isEmpty()) {
+			StringBuilder token = new StringBuilder(tokens[i]);
+			if (token.length() == 0) {
 				continue;
 			}
-			if (token.startsWith("\"")) { // Reconstruct string literals
+			if (token.toString().startsWith("\"")) { // Reconstruct string literals
 				for (int j = i + 1; j < tokens.length; j++) {
-					token += " " + tokens[j];
+					token.append(" ").append(tokens[j]);
 					if (tokens[j].endsWith("\"")) {
 						tokens[j] = "";
 						break;
@@ -384,34 +383,34 @@ public class Parser {
 				}
 			}
 			if (i == 0) { // Need to begin with a string, so we can safely concatenate.
-				Matcher m = function_call.matcher(token);
-				ScopeTracker.Type type = scopeTracker.getType(token);
+				Matcher m = function_call.matcher(token.toString());
+				ScopeTracker.Type type = scopeTracker.getType(token.toString());
 				if (type == ScopeTracker.Type.cables) {
 					continue;
 				}
-				if (type != null && scopeTracker.getType(token) != ScopeTracker.Type.cables) {
+				if (type != null && scopeTracker.getType(token.toString()) != ScopeTracker.Type.cables) {
 					System.out.println("Line " + lineNumber + ": Need to begin with a string to type coerce!\nGot " + type + ".");
 					scopeTracker.printCurrentScopeInfo();
 					throw new InvalidLineException();
-				} else if (str_val.matcher(token).find()) {
+				} else if (str_val.matcher(token.toString()).find()) {
 					continue;
 				} else if (m.find()) {
 					if (scopeTracker.getReturnType(m.group(1)) != ScopeTracker.Type.cables) {
 						throw new InvalidLineException();
 					} else {
-						checkFunctionCall(token);
+						checkFunctionCall(token.toString());
 					}
 				} else {
 					System.out.println("Invalid concatenation on line " + lineNumber);
 					throw new InvalidLineException();
 				}
-			} else if (var.matcher(token).matches()) {
+			} else if (var.matcher(token.toString()).matches()) {
 				continue;
-			} else if (stringOps.contains(token)) {
+			} else if (stringOps.contains(token.toString())) {
 				continue;
-			} else if (str_val.matcher(token).find()) {
+			} else if (str_val.matcher(token.toString()).find()) {
 				continue;
-			} else if (int_val.matcher(token).find()) {
+			} else if (int_val.matcher(token.toString()).find()) {
 				continue;
 			} else {
 				System.out.println("Invalid string operation \"" + token + "\" on line " + lineNumber);
@@ -422,31 +421,30 @@ public class Parser {
 
 	private static void checkIntsValidity(String cmd) throws InvalidLineException {
 		String[] tokens = cmd.split(" ");
-		for(int i = 0; i < tokens.length; i++) {
-			String token = tokens[i];
-			if(intOps.contains(token)) {
-				continue;
-			}
-			if(!var.matcher(token).matches()) { // This is not a variable name, or a valid op.
-				Matcher m = function_call.matcher(token);
-				if(m.find()) {
-					if(!intTypes.contains((scopeTracker.getReturnType(m.group(1))))) {
-						System.out.println("What even is this? This needs to be an int bro: " + token
-						+ "\nExpected integer type, got: " + scopeTracker.getReturnType(m.group(1)).toString());
-						throw new InvalidLineException();
-					}
-					checkFunctionCall(token);
-				} else {
-					try {
-						String val = intVal(token);
-					} catch (InvalidLineException e) {
-						System.out.println("What even is this? This needs to be an int bro: " + token
-								+ "\nExpected integer type, got: " + scopeTracker.getReturnType(m.group(1)).toString());
-						throw new InvalidLineException();
-					}
-				}
-			}
-		}
+        for (String token : tokens) {
+            if (intOps.contains(token)) {
+                continue;
+            }
+            if (!var.matcher(token).matches()) { // This is not a variable name, or a valid op.
+                Matcher m = function_call.matcher(token);
+                if (m.find()) {
+                    if (!intTypes.contains((scopeTracker.getReturnType(m.group(1))))) {
+                        System.out.println("What even is this? This needs to be an int bro: " + token
+                                + "\nExpected integer type, got: " + scopeTracker.getReturnType(m.group(1)).toString());
+                        throw new InvalidLineException();
+                    }
+                    checkFunctionCall(token);
+                } else {
+                    try {
+                        intVal(token);
+                    } catch (InvalidLineException e) {
+                        System.out.println("What even is this? This needs to be an int bro: " + token
+                                + "\nExpected integer type, got: " + scopeTracker.getReturnType(m.group(1)).toString());
+                        throw new InvalidLineException();
+                    }
+                }
+            }
+        }
 	}
 
 	private static void checkReturnType(String cmd) throws InvalidLineException {
@@ -468,64 +466,53 @@ public class Parser {
 			pythonLine = varAssign(cmd);
 			lastLine = LastLine.VarAssign;
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = funcDec(cmd);
 			if(debugMode) {
 				addFunction(cmd);
 			}
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = loopDec(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = endScope(cmd);
 			scopeTracker.endBlock();
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = ifExpr(cmd);
 			lastLine = LastLine.IfExpr;
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = elseExpr(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = returnExpr(cmd);
 			lastLine = LastLine.Return;
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = printExpr(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = incrExpr(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = commentExpr(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = funcCallExpr(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		return null;
 	}
 
@@ -533,8 +520,9 @@ public class Parser {
 		Matcher m = end_scope.matcher(cmd);
 		boolean match = m.find();
 		printMsg(match, "\n<end_scope>", cmd, "end of scope");
-		if (!match)
+		if (!match) {
 			throw new InvalidLineException();
+		}
 		return "";
 	}
 
@@ -638,21 +626,21 @@ public class Parser {
 	private static String funcCallExpr(String cmd) throws InvalidLineException, InvalidBlockException {
 		Matcher m = function_call_standalone.matcher(cmd);
 		boolean match = m.find();
-		String parameters = "";
+		StringBuilder parameters = new StringBuilder();
 		if(match) {
 			// Group 1 is always valid if it's found, type checking will handle this later
 			if(!m.group(2).isEmpty()) {
 				int paramNum = 0;
 				for(String s : m.group(2).trim().split(",")) {
 					if(var.matcher(s).find()) {
-						parameters += s;
+						parameters.append(s);
 					} else if (val(s) != null) {
-						parameters += val(s);
+						parameters.append(val(s));
 					} else {
 						throw new InvalidLineException();
 					}
 					if(paramNum != (m.group(2).trim().split(",").length - 1)) {
-						parameters += ",";
+						parameters.append(",");
 					}
 					paramNum++;
 				}
@@ -697,10 +685,10 @@ public class Parser {
 			if(split[i].isEmpty()) {
 				continue;
 			}
-			String token = split[i];
-			if(token.contains("\"")) {
+			StringBuilder token = new StringBuilder(split[i]);
+			if(token.toString().contains("\"")) {
 				for(int j = i + 1; j < split.length; j++) {
-					token += ", " + split[j];
+					token.append(", ").append(split[j]);
 					if(split[j].endsWith("\"")) {
 						split[j] = "";
 						break;
@@ -708,7 +696,7 @@ public class Parser {
 					split[j] = "";
 				}
 			}
-			String value = val(token);
+			String value = val(token.toString());
 
 			if (valDec.length() == 0) valDec = new StringBuilder(value);
 			else valDec.append(", ").append(value);
@@ -722,42 +710,35 @@ public class Parser {
 		try {
 			pythonLine = intVal(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = boolVal(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = var(false, cmd, null);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = strVal(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = intExpr(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = boolExpr(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = incrExpr(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = functionCall(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {}
+		} catch (InvalidLineException ignored) {}
 
 		printMsg(false, "<val>", cmd, "value");
 		throw new InvalidLineException();
@@ -796,15 +777,15 @@ public class Parser {
 	}
 
 	private static String intVal(String cmd) throws InvalidLineException {
-		return someVal(int_val.matcher(cmd), cmd, "<int>");
+		return someVal(int_val.matcher(cmd), cmd);
 	}
 
-	private static String someVal(Matcher m, String cmd, String type) throws InvalidLineException {
+	private static String someVal(Matcher m, String cmd) throws InvalidLineException {
 		if (m.find()) {
-			printMsg(true, type, cmd, type);
+			printMsg(true, "<int>", cmd, "<int>");
 			return cmd;
 		}
-		printMsg(false, type, cmd, type);
+		printMsg(false, "<int>", cmd, "<int>");
 		throw new InvalidLineException();
 	}
 
@@ -813,32 +794,27 @@ public class Parser {
 		try {
 			pythonLine = andExpr(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = orExpr(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = notExpr(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = equalExpr(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = lessExpr(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = greaterExpr(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {}
+		} catch (InvalidLineException ignored) {}
 		printMsg(false, "<val>", cmd, "value");
 		throw new InvalidLineException();		
 	}
@@ -858,25 +834,21 @@ public class Parser {
 			String leftExpr = null;
 			try {
 				leftExpr = boolVal(m.group(1));
-			} catch (InvalidLineException e) {
-			}
+			} catch (InvalidLineException ignored) {}
 			if (leftExpr == null) {
 				try {
 					leftExpr = var(false, m.group(1), null);
-				} catch (InvalidLineException e) {
-				}
+				} catch (InvalidLineException ignored) {}
 			}
 			if (leftExpr == null) {
 				try {
 					leftExpr = boolExpr(m.group(1));
-				} catch (InvalidLineException e) {
-				}
+				} catch (InvalidLineException ignored) {}
 			}
 			if (leftExpr == null) {
 				try {
 					leftExpr = functionCall(m.group(1));
-				} catch (InvalidLineException e) {
-				}
+				} catch (InvalidLineException ignored) {}
 			}
 
 			if (leftExpr != null) {
@@ -893,61 +865,51 @@ public class Parser {
 			String leftExpr = null;
 			try {
 				leftExpr = boolVal(m.group(1));
-			} catch (InvalidLineException e) {
-			}
+			} catch (InvalidLineException ignored) {}
 			if (leftExpr == null) {
 				try {
 					leftExpr = var(false, m.group(1), null);
-				} catch (InvalidLineException e) {
-				}
+				} catch (InvalidLineException ignored) {}
 			}
 			if (leftExpr == null) {
 				try {
 					leftExpr = boolExpr(m.group(1));
-				} catch (InvalidLineException e) {
-				}
+				} catch (InvalidLineException ignored) {}
 			}
 			if (leftExpr == null) {
 				try {
 					leftExpr = var(false, m.group(1), null);
-				} catch (InvalidLineException e) {
-				}
+				} catch (InvalidLineException ignored) {}
 			}
 			if (leftExpr == null) {
 				try {
 					leftExpr = functionCall(m.group(1));
-				} catch (InvalidLineException e) {
-				}
+				} catch (InvalidLineException ignored) {}
 			}
 
 			String rightExpr = null;
 			try {
 				rightExpr = boolVal(m.group(2));
-			} catch (InvalidLineException e) {
-			}
+			} catch (InvalidLineException ignored) {}
 			if (rightExpr == null) {
 				try {
 					rightExpr = var(false, m.group(2), null);
-				} catch (InvalidLineException e) {
-				}
+				} catch (InvalidLineException ignored) {}
 			}
 			if (rightExpr == null) {
 				try {
 					rightExpr = boolExpr(m.group(2));
-				} catch (InvalidLineException e) {
-				}
+				} catch (InvalidLineException ignored) {}
 			}
 			if (rightExpr == null) {
 				try {
 					rightExpr = var(false, m.group(2), null);
-				} catch (InvalidLineException e) {
-				}
+				} catch (InvalidLineException ignored) {}
 			}
 			if (rightExpr == null) {
 				try {
 					rightExpr = functionCall(m.group(2));
-				} catch (InvalidLineException e) {
-				}
+				} catch (InvalidLineException ignored) {}
 			}
 			if (leftExpr != null && rightExpr != null) {
 				printMsg(true, exprName, cmd, exprName);
@@ -971,14 +933,15 @@ public class Parser {
 	}
 
 	private static void printMsg(boolean match, String ntName, String cmd, String item) {
-		if (match)
+		if (match) {
 			if (debugMode) {
 				System.out.println(ntName + ": " + cmd);
 			}
-		else
+		} else {
 			if (debugMode) {
 				System.out.println("Failed to parse: {" + cmd + "} is not a valid " + item + ".");
 			}
+		}
 	}
 
 	private static String intExpr(String cmd) throws InvalidLineException, InvalidBlockException {
@@ -986,28 +949,23 @@ public class Parser {
 		try {
 			pythonLine = addExpr(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = subExpr(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = multExpr(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = divExpr(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 		try {
 			pythonLine = modExpr(cmd);
 			return pythonLine;
-		} catch (InvalidLineException e) {
-		}
+		} catch (InvalidLineException ignored) {}
 
 		printMsg(false, "<val>", cmd, "value");
 		throw new InvalidLineException();
@@ -1036,21 +994,21 @@ public class Parser {
 	private static String functionCall(String cmd) throws InvalidLineException, InvalidBlockException {
 		Matcher m = function_call.matcher(cmd);
 		boolean match = m.find();
-		String parameters = "";
+		StringBuilder parameters = new StringBuilder();
 		if(match) {
 			// Group 1 is always valid if it's found, type checking will handle this later
 			if(!m.group(2).isEmpty()) {
 				int paramNum = 0;
 				for(String s : m.group(2).trim().split(",")) {
 					if(var.matcher(s).find()) {
-						parameters += s;
+						parameters.append(s);
 					} else if (val(s) != null) {
-						parameters += val(s);
+						parameters.append(val(s));
 					} else {
 						throw new InvalidLineException();
 					}
 					if(paramNum != (m.group(2).trim().split(",").length - 1)) {
-						parameters += ",";
+						parameters.append(",");
 					}
 					paramNum++;
 				}
@@ -1068,65 +1026,55 @@ public class Parser {
 			String leftExpr = null;
 			try {
 				leftExpr = intVal(m.group(1));
-			} catch (InvalidLineException e) {
-			}
+			} catch (InvalidLineException ignored) {}
 			if (leftExpr == null) {
 				try {
 					leftExpr = var(false, m.group(1), null);
-                } catch (InvalidLineException e) {
-				}
+                } catch (InvalidLineException ignored) {}
 			}
 			if (leftExpr == null) {
 				try {
 					leftExpr = intExpr(m.group(1));
-				} catch (InvalidLineException e) {
-				}
+				} catch (InvalidLineException ignored) {}
 			}
 
 			if (leftExpr == null) {
 				try {
 					leftExpr = strVal(m.group(1));
-				} catch (InvalidLineException e) {
-				}
+				} catch (InvalidLineException ignored) {}
 			}
 
 			if (leftExpr == null) {
 				try {
 					leftExpr = functionCall(m.group(1));
-				} catch (InvalidLineException e) {
-				}
+				} catch (InvalidLineException ignored) {}
 			}
 
 			String rightExpr = null;
 			try {
 				rightExpr = intVal(m.group(2));
-			} catch (InvalidLineException e) {
-			}
+			} catch (InvalidLineException ignored) {}
 			if (rightExpr == null) {
 				try {
 					rightExpr = var(false, m.group(2), null);
-                } catch (InvalidLineException e) {
-				}
+                } catch (InvalidLineException ignored) {}
 			}
 			if (rightExpr == null) {
 				try {
 					rightExpr = intExpr(m.group(2));
-				} catch (InvalidLineException e) {
-				}
+				} catch (InvalidLineException ignored) {}
 			}
 
 			if (rightExpr == null) {
 				try {
 					rightExpr = strVal(m.group(2));
-				} catch (InvalidLineException e) {
-				}
+				} catch (InvalidLineException ignored) {}
 			}
 
 			if (rightExpr == null) {
 				try {
 					rightExpr = functionCall(m.group(2));
-				} catch (InvalidLineException e) {
-				}
+				} catch (InvalidLineException ignored) {}
 			}
 
 			if (leftExpr != null && rightExpr != null) {
@@ -1145,22 +1093,21 @@ public class Parser {
 			String leftExpr = null;
 			try {
 				leftExpr = boolExpr(m.group(1));
-			} catch (InvalidLineException e) {}
+			} catch (InvalidLineException ignored) {}
 			if (leftExpr == null) {
 				try {
 					leftExpr = var(false, m.group(1), null);
-				} catch (InvalidLineException e) {}
+				} catch (InvalidLineException ignored) {}
 			}
 			if(leftExpr == null) {
 				try {
 					leftExpr = boolVal(m.group(1));
-				} catch (InvalidLineException e) {}
+				} catch (InvalidLineException ignored) {}
 			}
 			if (leftExpr == null) {
 				try {
 					leftExpr = functionCall(m.group(1));
-				} catch (InvalidLineException e) {
-				}
+				} catch (InvalidLineException ignored) {}
 			}
 			
 			if (leftExpr != null) {
@@ -1204,15 +1151,16 @@ public class Parser {
 			try {
 				value = functionCall(m.group(1));
 				match = true;
-			} catch (InvalidLineException e) {}
+				checkFunctionCall(m.group(1));
+			} catch (InvalidLineException ignored) {}
 			try {
 				value = var(false, m.group(1), null);
 				match = true;
-			} catch (InvalidLineException e) {}
+			} catch (InvalidLineException ignored) {}
 			try {
 				value = val(m.group(1));
 				match = true;
-			} catch (InvalidLineException e) {}
+			} catch (InvalidLineException ignored) {}
 			if(!match) {
 				throw new InvalidLineException();
 			}
@@ -1229,7 +1177,7 @@ public class Parser {
 			String leftExpr = null;
 			try {
 				leftExpr = var(false, m.group(1), null);
-			} catch (InvalidLineException e) {}
+			} catch (InvalidLineException ignored) {}
 			
 			if (leftExpr != null) {
 				printMsg(true, "<increment_expr>", cmd, "<increment_expr>");
