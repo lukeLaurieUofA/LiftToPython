@@ -128,6 +128,7 @@ public class ScopeTracker {
 		pr,
 		samSulek,
 		smallPlate,
+		bool,
 		notImportant
 	}
 
