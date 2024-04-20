@@ -31,6 +31,7 @@ public class ScopeTracker {
 	}
 
 	public void addNewFunc(String name, Type returnType, ArrayList<Type> parameterTypes) {
+		System.out.println(name);
 		funcs.add(new FuncInfo(name, returnType, parameterTypes));
 	}
 
@@ -83,13 +84,15 @@ public class ScopeTracker {
 	}
 
 	public void printCurrentScopeInfo() {
-		System.out.println("Functions:");
-		for(FuncInfo funcInfo : funcs) {
-			System.out.println("Name: " + funcInfo.name + " ReturnType:  " + funcInfo.returnType);
-			if(funcInfo.params != null) {
-				System.out.println("Parameters:");
-				for (Type type : funcInfo.params) {
-					System.out.println("\t" + type.toString());
+		if(funcs.size() > 0) {
+			System.out.println("Functions:");
+			for (FuncInfo funcInfo : funcs) {
+				System.out.println("Name: " + funcInfo.name + " ReturnType:  " + funcInfo.returnType);
+				if (funcInfo.params != null) {
+					System.out.println("Parameters:");
+					for (Type type : funcInfo.params) {
+						System.out.println("\t" + type.toString());
+					}
 				}
 			}
 		}

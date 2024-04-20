@@ -98,8 +98,10 @@ public class Parser {
 			// check if string is an integer
 			if (args[i].matches("-?\\d+")) {
 				value = args[i];
+				scopeTracker.addNewVar("preworkout" + i, ScopeTracker.Type.samSulek);
 			} else {
 				value = "\"" + args[i] + "\"";
+				scopeTracker.addNewVar("preworkout" + i, ScopeTracker.Type.cables);
 			}
 			clipTracker.addNewCodeline("", String.format("%s%d = %s", cmdArgs, i, value));
 		}
@@ -530,6 +532,7 @@ public class Parser {
 	private static String loopDec(String cmd) throws InvalidLineException, InvalidBlockException {
 		Matcher m = loop_dec.matcher(cmd);
 		if (m.find()) {
+			scopeTracker.insertNewBlock();
 			String variable = var(true, m.group(1), "weight"); // group 1 is variable name, group 2 is first bound, group 3 is
 														// second bound
 			String fromVal = val(m.group(2));
@@ -549,10 +552,10 @@ public class Parser {
 			scopeTracker.setReturnType(getType(m.group(1)));
 			String functionName = m.group(2);
 			String parameters = "";
+			scopeTracker.insertNewBlock();
 			if(!m.group(3).isEmpty()) {
 				parameters = varDecList(m.group(3));
 			}
-			scopeTracker.insertNewBlock();
 			printMsg(true, "\n<func_dec>", cmd, "function declaration");
 			return String.format("def %s(%s):", functionName, parameters);
 		}
@@ -563,8 +566,8 @@ public class Parser {
 	private static String varAssign(String cmd) throws InvalidLineException, InvalidBlockException {
 		Matcher m = var_assign.matcher(cmd);
 		if (m.find()) {
+			String values = valList(m.group(2));
 			String variables = varDecList(m.group(1));
-			String values = valList(m.group(2)); 
 			printMsg(true, "\n<var_assign>", cmd, "variable assignment statement");
 			return String.format("%s = %s", variables, values);
 		}
